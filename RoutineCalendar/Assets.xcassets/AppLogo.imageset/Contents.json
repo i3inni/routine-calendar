@@ -1,0 +1,29 @@
+{
+  "images" : [
+    {
+      "filename" : "logo_light.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "appearances" : [
+        { "appearance" : "luminosity", "value" : "light" }
+      ],
+      "filename" : "logo_light.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "appearances" : [
+        { "appearance" : "luminosity", "value" : "dark" }
+      ],
+      "filename" : "logo_dark.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

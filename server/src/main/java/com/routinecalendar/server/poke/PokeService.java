@@ -1,0 +1,60 @@
+package com.routinecalendar.server.poke;
+
+import com.routinecalendar.server.common.error.BusinessException;
+import com.routinecalendar.server.common.error.ErrorCode;
+import com.routinecalendar.server.friend.FriendshipRepository;
+import com.routinecalendar.server.user.User;
+import com.routinecalendar.server.user.UserRepository;
+import java.time.Duration;
+import java.time.Instant;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class PokeService {
+
+    private static final Duration COOLDOWN = Duration.ofHours(1);
+
+    private final UserRepository userRepository;
+    private final FriendshipRepository friendshipRepository;
+    private final PokeRepository pokeRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public PokeService(UserRepository userRepository,
+                       FriendshipRepository friendshipRepository,
+                       PokeRepository pokeRepository,
+                       ApplicationEventPublisher eventPublisher) {
+        this.userRepository = userRepository;
+        this.friendshipRepository = friendshipRepository;
+        this.pokeRepository = pokeRepository;
+        this.eventPublisher = eventPublisher;
+    }
+
+    @Transactional
+    public void poke(Long meId, Long toUserId) {
+        User me = getUser(meId);
+        User to = getUser(toUserId);
+
+        if (!friendshipRepository.existsBetween(me, to)) {
+            throw new BusinessException(ErrorCode.POKE_NOT_FRIEND);
+        }
+
+        // 같은 상대에게 1시간 쿨다운
+        pokeRepository.findTopByFromUserAndToUserOrderByCreatedAtDesc(me, to)
+                .ifPresent(last -> {
+                    if (last.getCreatedAt().isAfter(Instant.now().minus(COOLDOWN))) {
+                        throw new BusinessException(ErrorCode.POKE_COOLDOWN);
+                    }
+                });
+
+        pokeRepository.save(new Poke(me, to));
+        // 커밋 후 비동기로 푸시 (PushEventListener)
+        eventPublisher.publishEvent(new PokeEvent(to.getId(), me.getNickname()));
+    }
+
+    private User getUser(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    }
+}

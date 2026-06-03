@@ -1,0 +1,139 @@
+name: RoutineCalendar
+
+options:
+  bundleIdPrefix: com.yourteam
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    TARGETED_DEVICE_FAMILY: "1"
+
+configs:
+  Debug: debug
+  Release: release
+
+packages:
+  KakaoOpenSDK:
+    url: https://github.com/kakao/kakao-ios-sdk
+    from: 2.27.3
+
+targets:
+
+  RoutineCalendar:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: RoutineCalendar
+        excludes:
+          - "**/*.entitlements"
+      - path: Shared
+    resources:
+      - path: RoutineCalendar/Assets.xcassets
+      - path: "RoutineCalendar/Preview Content"
+      - path: RoutineCalendar/Resources/notif_icon.png
+    entitlements:
+      path: RoutineCalendar/RoutineCalendar.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.yourteam.routinecalendar
+        aps-environment: production
+    info:
+      path: RoutineCalendar/Info.plist
+      properties:
+        CFBundleName: 같이해
+        CFBundleDisplayName: 같이해
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiresFullScreen: YES
+        NSUserNotificationUsageDescription: 루틴 알림을 받으려면 알림 권한이 필요합니다.
+        # 개발 중 로컬 서버(http://localhost:8080) 접속 허용. 운영 도메인은 HTTPS 사용.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UIAppFonts:
+          - ongle.ttf
+        # 카카오 네이티브 앱 키 (빌드 설정에서 주입). 코드/스킴이 공유.
+        KAKAO_NATIVE_APP_KEY: $(KAKAO_NATIVE_APP_KEY)
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - routinecalendar
+            CFBundleURLName: com.yourteam.routinecalendar
+          - CFBundleURLSchemes:
+              - kakao$(KAKAO_NATIVE_APP_KEY)
+            CFBundleURLName: com.yourteam.routinecalendar.kakao
+        # 카카오톡 앱으로 로그인/공유 시 필요
+        LSApplicationQueriesSchemes:
+          - kakaokompassauth
+          - kakaolink
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourteam.routinecalendar
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: "DBDJ2HDBU2"
+        CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+    # 카카오 키 등 비밀 값은 xcconfig로 주입 (KAKAO_NATIVE_APP_KEY)
+    configFiles:
+      Debug: Config.xcconfig
+      Release: Config.xcconfig
+    dependencies:
+      - target: RoutineCalendarWidget
+        embed: true
+        codeSign: false
+      - package: KakaoOpenSDK
+        product: KakaoSDKCommon
+      - package: KakaoOpenSDK
+        product: KakaoSDKAuth
+      - package: KakaoOpenSDK
+        product: KakaoSDKUser
+
+  RoutineCalendarWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: RoutineCalendarWidget
+        excludes:
+          - "**/*.entitlements"
+      - path: Shared
+    resources:
+      - path: RoutineCalendarWidget/Assets.xcassets
+    entitlements:
+      path: RoutineCalendarWidget/RoutineCalendarWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.yourteam.routinecalendar
+    info:
+      path: RoutineCalendarWidget/Info.plist
+      properties:
+        CFBundleName: 같이해
+        CFBundleDisplayName: 같이해
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourteam.routinecalendar.widget
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: "DBDJ2HDBU2"
+        CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SKIP_INSTALL: YES

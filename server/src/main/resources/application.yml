@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: routine-calendar-server
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/routine_calendar}
+    username: ${DB_USERNAME:routine}
+    password: ${DB_PASSWORD:routine}
+
+  jpa:
+    hibernate:
+      # 스키마는 Flyway가 소유한다. JPA는 엔티티가 실제 스키마와 일치하는지 '검증'만 한다.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+app:
+  jwt:
+    # HS256 → 최소 256bit(32바이트) 이상. 운영에선 반드시 환경변수로 주입.
+    secret: ${JWT_SECRET:dev-only-secret-please-change-in-production-0123456789abcdef}
+    access-token-validity: ${JWT_ACCESS_VALIDITY:3600}        # 초 (1시간)
+    refresh-token-validity: ${JWT_REFRESH_VALIDITY:2592000}   # 초 (30일)
+  kakao:
+    user-info-uri: https://kapi.kakao.com/v2/user/me
+  auth:
+    # 카카오 없이 JWT를 발급받는 개발용 로그인. 운영(prod)에선 반드시 false.
+    dev-login-enabled: ${DEV_LOGIN_ENABLED:true}
+  apns:
+    # 키가 준비되기 전엔 false → 실제 발송 대신 로그만 남긴다.
+    enabled: ${APNS_ENABLED:false}
+    use-sandbox: ${APNS_SANDBOX:true}      # 개발 빌드는 sandbox
+    team-id: ${APNS_TEAM_ID:}
+    key-id: ${APNS_KEY_ID:}
+    bundle-id: ${APNS_BUNDLE_ID:com.yourteam.routinecalendar}
+    private-key: ${APNS_PRIVATE_KEY:}      # .p8 PEM 내용
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,8 @@
+// 공개 가능한 기본 빌드 설정.
+// 실제 비밀 값은 커밋하지 않는 Secrets.xcconfig 에서 주입된다.
+
+// 카카오 네이티브 앱 키 (없으면 빈 값 → 앱은 dev-login만 노출)
+KAKAO_NATIVE_APP_KEY =
+
+// 비밀 파일이 있으면 덮어쓴다. 없으면(신규 클론/CI) 조용히 무시.
+#include? "Secrets.xcconfig"
