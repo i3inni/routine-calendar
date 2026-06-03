@@ -1,11 +1,11 @@
 # ── 비밀 값 (절대 커밋 금지) ──
 Secrets.xcconfig
-*.p8                 # APNs 인증 키
+# APNs 인증 키
+*.p8
 .env
 server/.env
 
-# ── iOS / Xcode ──
-RoutineCalendar.xcodeproj   # xcodegen이 project.yml로 생성
+# ── iOS / Xcode (사용자별 상태) ──
 xcuserdata/
 *.xcuserstate
 DerivedData/
