@@ -7,10 +7,12 @@ import com.routinecalendar.server.user.User;
 import com.routinecalendar.server.user.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class PokeService {
 
@@ -33,10 +35,12 @@ public class PokeService {
 
     @Transactional
     public void poke(Long meId, Long toUserId) {
+        log.info("[콕] 요청: from={} → to={}", meId, toUserId);
         User me = getUser(meId);
         User to = getUser(toUserId);
 
         if (!friendshipRepository.existsBetween(me, to)) {
+            log.warn("[콕] 차단: 친구 아님 from={} to={}", meId, toUserId);
             throw new BusinessException(ErrorCode.POKE_NOT_FRIEND);
         }
 
@@ -44,6 +48,7 @@ public class PokeService {
         pokeRepository.findTopByFromUserAndToUserOrderByCreatedAtDesc(me, to)
                 .ifPresent(last -> {
                     if (last.getCreatedAt().isAfter(Instant.now().minus(COOLDOWN))) {
+                        log.warn("[콕] 차단: 쿨다운 from={} to={} 마지막={}", meId, toUserId, last.getCreatedAt());
                         throw new BusinessException(ErrorCode.POKE_COOLDOWN);
                     }
                 });
@@ -51,6 +56,7 @@ public class PokeService {
         pokeRepository.save(new Poke(me, to));
         // 커밋 후 비동기로 푸시 (PushEventListener)
         eventPublisher.publishEvent(new PokeEvent(to.getId(), me.getNickname()));
+        log.info("[콕] 저장 완료 → 커밋 후 푸시 이벤트 발행: to={} from='{}'", to.getId(), me.getNickname());
     }
 
     private User getUser(Long id) {

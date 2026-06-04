@@ -37,11 +37,14 @@ public class PushService {
         }
         List<DeviceToken> tokens = deviceTokenRepository.findByUser(user);
         if (tokens.isEmpty()) {
-            log.info("등록된 기기 없음 — userId={}", userId);
+            log.info("등록된 기기 없음 — userId={} (앱 실행/로그인으로 토큰 재등록 필요)", userId);
             return;
         }
+        log.info("푸시 발송 — userId={} 기기 {}대, title='{}'", userId, tokens.size(), title);
         for (DeviceToken dt : tokens) {
             SendResult result = apnsClient.send(dt.getToken(), title, body);
+            log.info("푸시 결과 — userId={} token={}… result={}",
+                    userId, dt.getToken().substring(0, Math.min(8, dt.getToken().length())), result);
             if (result == SendResult.UNREGISTERED) {
                 deviceTokenRepository.delete(dt);
             }
