@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(SettingsStore.self) private var settings
+    @Environment(DeepLinkRouter.self) private var deepLink
     @Environment(\.colorScheme) private var scheme
     @State private var selectedTab = 0
 
@@ -21,6 +22,13 @@ struct MainTabView: View {
         }
         .tint(Color.rcAccent(scheme))
         .preferredColorScheme(colorSchemeOverride)
+        // 친구추가 딥링크 → 친구 탭으로 전환 (콜드/웜 실행 모두 대응)
+        .onChange(of: deepLink.pendingFriendHandle) { _, new in
+            if new != nil { selectedTab = 1 }
+        }
+        .onAppear {
+            if deepLink.pendingFriendHandle != nil { selectedTab = 1 }
+        }
     }
 
     private var colorSchemeOverride: ColorScheme? {

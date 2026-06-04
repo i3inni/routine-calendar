@@ -11,6 +11,7 @@ struct RoutineCalendarApp: App {
     @State private var settingsStore  = SettingsStore()
     @State private var friendsStore   = FriendsStore()
     @State private var session        = SessionStore()
+    @State private var deepLink       = DeepLinkRouter()
     @State private var showSplash = true
 
     var body: some Scene {
@@ -33,6 +34,7 @@ struct RoutineCalendarApp: App {
             .environment(settingsStore)
             .environment(friendsStore)
             .environment(session)
+            .environment(deepLink)
             .preferredColorScheme(colorSchemeOverride)
             .task {
                 await session.bootstrap()   // 저장된 refresh 토큰으로 자동 로그인 시도
@@ -51,6 +53,15 @@ struct RoutineCalendarApp: App {
                 // 카카오톡 앱 로그인 후 리다이렉트 처리
                 if AuthApi.isKakaoTalkLoginUrl(url) {
                     _ = AuthController.handleOpenUrl(url: url)
+                    return
+                }
+                // 친구추가 딥링크(routinecalendar://add-friend?id=...)
+                deepLink.handleIfFriendLink(url)
+            }
+            // Universal Link(https://.../add-friend?id=...)는 user activity로 전달됨
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL {
+                    deepLink.handleIfFriendLink(url)
                 }
             }
         }

@@ -44,6 +44,10 @@ targets:
         com.apple.security.application-groups:
           - group.com.yourteam.routinecalendar
         aps-environment: production
+        # Universal Links: 이 도메인의 https 링크를 앱이 가로챈다.
+        # ⚠️ 실제 배포 도메인이 바뀌면 여기 + 서버 AASA + API_BASE_URL 도 함께 수정.
+        com.apple.developer.associated-domains:
+          - applinks:routine-calendar.kodeploy.com
     info:
       path: RoutineCalendar/Info.plist
       properties:

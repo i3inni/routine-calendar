@@ -2,9 +2,11 @@ import SwiftUI
 
 struct FriendsView: View {
     @Environment(FriendsStore.self) private var friendsStore
+    @Environment(DeepLinkRouter.self) private var deepLink
     @Environment(\.colorScheme) private var scheme
 
     @State private var showAddSheet = false
+    @State private var prefillId: String?
 
     private var sortedFriends: [Friend] {
         friendsStore.friends.sorted { !$0.isAllDone && $1.isAllDone }
@@ -107,9 +109,21 @@ struct FriendsView: View {
             }
         }
         .sheet(isPresented: $showAddSheet) {
-            AddFriendSheetView()
+            AddFriendSheetView(prefillId: prefillId)
         }
         .task { await friendsStore.refresh() }
+        // 딥링크로 들어온 친구 ID → 시트 열고 자동 입력
+        .onChange(of: deepLink.pendingFriendHandle) { _, new in
+            consumeDeepLink(new)
+        }
+        .onAppear { consumeDeepLink(deepLink.pendingFriendHandle) }
+    }
+
+    private func consumeDeepLink(_ handle: String?) {
+        guard let handle else { return }
+        prefillId = handle
+        showAddSheet = true
+        deepLink.pendingFriendHandle = nil   // 1회 소비
     }
 }
 

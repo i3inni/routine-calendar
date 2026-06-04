@@ -7,15 +7,21 @@ struct AddFriendSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var scheme
 
-    @State private var inputId = ""
+    @State private var inputId: String
     @State private var isSending = false
     @State private var didSend = false
     @State private var errorMessage: String?
     @State private var showCopiedToast = false
 
+    /// 딥링크/공유로 들어온 경우 친구 ID를 미리 채운다.
+    init(prefillId: String? = nil) {
+        _inputId = State(initialValue: prefillId ?? "")
+    }
+
     private var myHandle: String { session.currentUser?.handle ?? "—" }
     private var shareText: String {
-        "같이해에서 함께 루틴 해요! 내 ID: \(myHandle)"
+        let link = DeepLinkRouter.addFriendURL(handle: myHandle).absoluteString
+        return "같이해에서 함께 루틴 해요! 내 ID: \(myHandle)\n아래 링크를 누르면 바로 친구추가 돼요\n\(link)"
     }
 
     var body: some View {

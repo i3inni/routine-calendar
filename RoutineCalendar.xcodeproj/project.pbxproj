@@ -57,6 +57,7 @@
 		C8B8D62C6CA63C8E0D6A83DD /* DayCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 854D70C6B77DFC9D9FD62ADB /* DayCellView.swift */; };
 		D241D0495FFF367EE2AE6593 /* KakaoSDKUser in Frameworks */ = {isa = PBXBuildFile; productRef = 70D4502FF0F80ED4F00412CC /* KakaoSDKUser */; };
 		DB8FDCCDC37F3A972A49245B /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CA26C875CF6855551E74CB /* FriendsView.swift */; };
+		DEB7E38BFE32DE771A6B62FE /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5902D964991C3BF04A535FA1 /* DeepLinkRouter.swift */; };
 		E008631EEF049731073B4EC4 /* CompletionControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2CC757FC31F3C514DB46CD /* CompletionControlView.swift */; };
 		ECADAA1C6CD4149A17CC654D /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F698FBD4AC4C1D98FF4CEE8 /* SettingsStore.swift */; };
 		F75DDA639C10FF1362202F6C /* DeviceTokenCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5296C3B22F16B8088898C20B /* DeviceTokenCenter.swift */; };
@@ -113,6 +114,7 @@
 		508FC731A7775905053C03B5 /* FriendsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsStore.swift; sourceTree = "<group>"; };
 		5296C3B22F16B8088898C20B /* DeviceTokenCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTokenCenter.swift; sourceTree = "<group>"; };
 		571D779606F30A5583E199D5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5902D964991C3BF04A535FA1 /* DeepLinkRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRouter.swift; sourceTree = "<group>"; };
 		5935A0815B33411FD159035B /* RoutineWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineWidgetBundle.swift; sourceTree = "<group>"; };
 		59BA1B6BE125FAFF9D4DDEB5 /* MonthGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthGridView.swift; sourceTree = "<group>"; };
 		68EEBA691E63C16C9899E51C /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -145,7 +147,7 @@
 		FB137ABA521BF30642477F91 /* FriendCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendCardView.swift; sourceTree = "<group>"; };
 		FC851842E194A0A9A50B9204 /* Friend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Friend.swift; sourceTree = "<group>"; };
 		FEEAA2BD26186173E0CB0D93 /* LockScreenCircularView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenCircularView.swift; sourceTree = "<group>"; };
-		"TEMP_9E77326D-8697-4AA3-B6F9-5350D444D2D9" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		"TEMP_513BF0A7-F17E-436B-857F-B1DAE0F6B48D" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +175,7 @@
 		164204E2A848CA9628D7EF80 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				5902D964991C3BF04A535FA1 /* DeepLinkRouter.swift */,
 				EA37300015DED827ECD61583 /* MainTabView.swift */,
 				33A4A71D0CD2C9449CA482ED /* RoutineCalendarApp.swift */,
 			);
@@ -365,10 +368,10 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		"TEMP_12B6884E-3077-4113-9B17-969FF99FE1FD" /* routine_calendar */ = {
+		"TEMP_801C8247-2FBC-4C72-A70A-5AF7650C9D63" /* routine_calendar */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_9E77326D-8697-4AA3-B6F9-5350D444D2D9" /* Config.xcconfig */,
+				"TEMP_513BF0A7-F17E-436B-857F-B1DAE0F6B48D" /* Config.xcconfig */,
 			);
 			path = routine_calendar;
 			sourceTree = "<group>";
@@ -498,6 +501,7 @@
 				ACC7B6433BED427BFB927817 /* DateHelpers.swift in Sources */,
 				C8B8D62C6CA63C8E0D6A83DD /* DayCellView.swift in Sources */,
 				240DE3D065D2B0AC72383181 /* DayPanelView.swift in Sources */,
+				DEB7E38BFE32DE771A6B62FE /* DeepLinkRouter.swift in Sources */,
 				6B057174E2DE88ADC0DDF31F /* DesignTokens.swift in Sources */,
 				F75DDA639C10FF1362202F6C /* DeviceTokenCenter.swift in Sources */,
 				8B4BE0CE1ED1350A41F29DA6 /* Friend.swift in Sources */,
@@ -559,7 +563,7 @@
 /* Begin XCBuildConfiguration section */
 		3F09F7C32DBB6293A97C2157 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_9E77326D-8697-4AA3-B6F9-5350D444D2D9" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_513BF0A7-F17E-436B-857F-B1DAE0F6B48D" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -756,7 +760,7 @@
 		};
 		F031B3C7DACB7E10FF27FFEB /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_9E77326D-8697-4AA3-B6F9-5350D444D2D9" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_513BF0A7-F17E-436B-857F-B1DAE0F6B48D" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
