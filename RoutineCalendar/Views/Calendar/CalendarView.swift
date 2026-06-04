@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct CalendarView: View {
     @Environment(RoutineStore.self) private var store
@@ -38,6 +39,17 @@ struct CalendarView: View {
                             month: displayMonth,
                             selectedDateKey: $selectedDateKey,
                             calendarStyle: settings.calendarStyle
+                        )
+                        // 좌우 스와이프로 달 이동 (가로 이동이 우세할 때만 → 세로 스크롤/날짜 탭과 충돌 방지)
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 20)
+                                .onEnded { value in
+                                    let dx = value.translation.width
+                                    let dy = value.translation.height
+                                    guard abs(dx) > abs(dy) * 1.5, abs(dx) > 50 else { return }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    if dx < 0 { nextMonth() } else { prevMonth() }
+                                }
                         )
 
                         // Separator
