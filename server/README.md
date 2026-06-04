@@ -33,6 +33,28 @@ curl localhost:8080/api/ping
 curl localhost:8080/actuator/health
 ```
 
+## 배포 (Docker / PaaS)
+
+[`Dockerfile`](Dockerfile)은 멀티스테이지(JDK로 `bootJar` 빌드 → JRE로 실행).
+PaaS(KoDeploy/Railway 등)가 주입하는 `PORT`를 `server.port=${PORT:8080}`가 받는다.
+
+```bash
+docker build -t routine-server .
+docker run -p 8080:8080 --env-file server/.env routine-server
+```
+
+운영에서 주입할 환경변수(`server/.env.example` 참고):
+
+| 변수 | 설명 |
+|---|---|
+| `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | JDBC 접속 (`jdbc:postgresql://...`) |
+| `JWT_SECRET` | 길고 무작위한 256bit+ 값 |
+| `DEV_LOGIN_ENABLED` | 운영은 반드시 `false` |
+| `APNS_ENABLED` 외 `APNS_*` | 실제 푸시 시 (아래 푸시 섹션) |
+
+> PaaS의 Postgres 플러그인은 보통 `postgresql://...`(JDBC 아님)을 주므로,
+> `DB_URL`은 `jdbc:` 접두사를 붙여 따로 구성한다.
+
 ## 스키마 (Flyway `V1__init.sql`)
 - **users** — Kakao 로그인 신원(`kakao_id`) + 친구추가용 공개 `handle`
 - **friendships** — 친구 관계. `(user_low_id < user_high_id)` 한 행으로 정규화(중복 방지)
@@ -53,9 +75,12 @@ friend/        Friendship, FriendRequest(+Status), Repository
 poke/          Poke, PokeRepository
 summary/       DailySummary, DailySummaryRepository
 device/        DeviceToken(+Platform), DeviceTokenRepository
+push/          ApnsClient, PushService, PushEventListener, ApnsProperties
 common/error/  ErrorCode, BusinessException, GlobalExceptionHandler
-web/           HealthController
+web/           HealthController, WellKnownController(AASA)
 ```
+
+> 코드를 한 줄씩 공부하려면 [`docs/`](docs/README.md)의 정독 가이드 참고.
 
 ## 인증 (Kakao 로그인 + JWT)
 
@@ -106,14 +131,33 @@ web/           HealthController
 - **`app.apns.enabled=false`(기본)면 실제 발송 대신 로그만** → 키 없이도 흐름 검증 가능.
   실제 발송하려면 `APNS_ENABLED=true` + `APNS_TEAM_ID`/`APNS_KEY_ID`/`APNS_BUNDLE_ID`/`APNS_PRIVATE_KEY`(.p8 PEM).
 
+## Universal Links (친구추가 딥링크)
+
+iOS 앱이 `https://<도메인>/add-friend/<handle>` 링크를 가로채 친구추가 화면을 열도록 지원.
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/.well-known/apple-app-site-association` | Apple이 도메인↔앱 연결을 검증하는 AASA(JSON). 인증 없이 공개 |
+| GET | `/add-friend` | 앱 미설치(브라우저) 시 폴백 안내 페이지 |
+
+- AASA의 `appIDs`는 `TeamID.BundleID`(`DBDJ2HDBU2.com.yourteam.routinecalendar`).
+  TeamID/BundleID가 바뀌면 `WellKnownController`의 `APP_ID`도 수정.
+- 동작 조건: HTTPS + `application/json` + 리다이렉트 없이 응답되어야 함.
+  ```bash
+  curl -i https://<도메인>/.well-known/apple-app-site-association
+  ```
+- 앱 쪽은 `applinks:<도메인>` 엔타이틀먼트가 필요(iOS `project.yml`).
+  현재 공유 링크는 서버 없이도 열리는 커스텀 스킴(`routinecalendar://...`)을 쓰고,
+  서버 배포 후 https Universal Link로 전환 가능.
+
 ## 다음 단계
 1. ~~프로젝트 골격 + DB 스키마~~ ✅
 2. ~~Kakao 로그인 + JWT(자동 로그인 포함)~~ ✅
 3. ~~친구 도메인 API (요청/수락/끊기/목록/요약/콕)~~ ✅
 4. ~~APNs 푸시 발송 (.p8, 이벤트+비동기)~~ ✅
+5. ~~iOS 연동(REST/카카오 로그인) + Docker 배포 + Universal Links AASA~~ ✅
 
 **남은 연동 작업**
-- iOS `FriendsStore` 스텁을 실제 `APIClient`(REST 호출)로 교체
-- Kakao 개발자 콘솔 앱 등록(REST 키) → `/auth/kakao` 실연동
-- Apple `.p8` 키 발급 → `APNS_*` 주입해 실제 푸시
-- 운영 배포(prod 프로파일: `dev-login-enabled=false`, JWT_SECRET·DB 환경변수)
+- 실기기에서 APNs 실제 발송 검증(`APNS_ENABLED=true`, sandbox/production 매칭)
+- 운영 도메인 확정 → 앱 `applinks`/`API_BASE_URL` + 서버 AASA 도메인 정렬
+- 운영 배포(prod: `DEV_LOGIN_ENABLED=false`, `JWT_SECRET`·DB 환경변수, HTTPS)
