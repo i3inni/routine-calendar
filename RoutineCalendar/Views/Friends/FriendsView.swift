@@ -107,6 +107,7 @@ struct FriendsView: View {
                     .padding(.bottom, 100)
                 }
             }
+            .refreshable { await friendsStore.refresh() }
         }
         .sheet(isPresented: $showAddSheet) {
             AddFriendSheetView(prefillId: prefillId)
