@@ -1,8 +1,15 @@
 import Foundation
 
 enum APIConfig {
-    /// 시뮬레이터에서는 localhost로 로컬 서버에 접속. 실기기 테스트 시 맥의 LAN IP로 교체.
-    static let baseURL = URL(string: "http://localhost:8080")!
+    /// 서버 API 베이스 URL. 값은 Config.xcconfig(API_BASE_URL) → Info.plist 에서 주입된다.
+    static let baseURL: URL = {
+        guard let str = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,
+              let url = URL(string: str.trimmingCharacters(in: .whitespaces)),
+              url.scheme != nil else {
+            fatalError("API_BASE_URL 이 비어있거나 잘못되었습니다. Config.xcconfig 를 확인하세요.")
+        }
+        return url
+    }()
 }
 
 // MARK: - 서버 DTO (필요한 필드만; 모르는 키는 Codable이 무시)

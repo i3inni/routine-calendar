@@ -64,6 +64,8 @@ targets:
           - ongle.ttf
         # 카카오 네이티브 앱 키 (빌드 설정에서 주입). 코드/스킴이 공유.
         KAKAO_NATIVE_APP_KEY: $(KAKAO_NATIVE_APP_KEY)
+        # 서버 API 베이스 URL (Config.xcconfig 에서 주입)
+        API_BASE_URL: $(API_BASE_URL)
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - routinecalendar

@@ -4,5 +4,9 @@
 // 카카오 네이티브 앱 키 (없으면 빈 값 → 앱은 dev-login만 노출)
 KAKAO_NATIVE_APP_KEY =
 
+// 서버 API 베이스 URL. xcconfig는 '//' 를 주석으로 처리하므로 $() 로 분리한다.
+// 로컬 테스트 시: http:/$()/localhost:8080
+API_BASE_URL = https:/$()/routine-calendar.kodeploy.com
+
 // 비밀 파일이 있으면 덮어쓴다. 없으면(신규 클론/CI) 조용히 무시.
 #include? "Secrets.xcconfig"
