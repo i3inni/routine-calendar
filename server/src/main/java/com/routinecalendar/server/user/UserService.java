@@ -1,5 +1,7 @@
 package com.routinecalendar.server.user;
 
+import com.routinecalendar.server.common.error.BusinessException;
+import com.routinecalendar.server.common.error.ErrorCode;
 import java.security.SecureRandom;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,15 @@ public class UserService {
                         .nickname(nickname != null ? nickname : "사용자")
                         .profileImageUrl(profileImageUrl)
                         .build()));
+    }
+
+    /** 닉네임(친구에게 보이는 이름) 변경. */
+    @Transactional
+    public User updateNickname(Long userId, String nickname) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.updateNickname(nickname.trim());
+        return user;
     }
 
     private String generateUniqueHandle() {

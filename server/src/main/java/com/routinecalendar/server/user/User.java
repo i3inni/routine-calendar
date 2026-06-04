@@ -61,4 +61,9 @@ public class User {
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
     }
+
+    /** 친구에게 표시되는 이름(닉네임) 변경. */
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
 }
