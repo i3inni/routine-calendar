@@ -72,9 +72,17 @@ public class ApnsClient {
             if (res.statusCode() == 200) {
                 return SendResult.SUCCESS;
             }
-            // 410 Unregistered / BadDeviceToken → 토큰 폐기 대상
-            if (res.statusCode() == 410 || res.body().contains("Unregistered") || res.body().contains("BadDeviceToken")) {
-                log.info("APNs 만료 토큰 {}…: {}", preview(deviceToken), res.body());
+            // 토큰을 더 못 쓰는 경우(만료/잘못/환경불일치) → 폐기 대상
+            // - 410 Unregistered: 앱 삭제 등
+            // - BadDeviceToken: 토큰 형식/환경 불일치
+            // - BadEnvironmentKeyInToken: sandbox↔production 환경 불일치 토큰
+            // - DeviceTokenNotForTopic: 다른 앱(번들ID)의 토큰
+            if (res.statusCode() == 410
+                    || res.body().contains("Unregistered")
+                    || res.body().contains("BadDeviceToken")
+                    || res.body().contains("BadEnvironmentKeyInToken")
+                    || res.body().contains("DeviceTokenNotForTopic")) {
+                log.info("APNs 폐기 토큰 {}…: {}", preview(deviceToken), res.body());
                 return SendResult.UNREGISTERED;
             }
             log.warn("APNs 실패 status={} body={}", res.statusCode(), res.body());
