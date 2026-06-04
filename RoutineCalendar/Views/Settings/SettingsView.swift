@@ -7,6 +7,7 @@ struct SettingsView: View {
 
     @State private var nameDraft = ""
     @State private var isSavingName = false
+    @State private var showLogoutConfirm = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -87,16 +88,37 @@ struct SettingsView: View {
                     }
 
                     // Footer
-                    Text("모든 설정과 루틴 기록은 이 기기에만 저장됩니다.\n로그인이나 동기화는 없습니다.")
+                    Text("설정과 루틴 기록은 이 기기에 저장되고,\n친구/알림은 로그인 계정으로 연결됩니다.")
                         .font(.system(size: 12.5))
                         .foregroundStyle(Color.rcText2(scheme))
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, 16)
                         .padding(.top, 24)
-                        .padding(.bottom, 40)
+                        .padding(.bottom, 20)
+
+                    // 로그아웃
+                    Button(role: .destructive) {
+                        showLogoutConfirm = true
+                    } label: {
+                        Text("로그아웃")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.rcDestructive)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                Color.rcCard(scheme),
+                                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            )
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 40)
                 }
             }
+        }
+        .confirmationDialog("로그아웃 할까요?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
+            Button("로그아웃", role: .destructive) { session.logout() }
+            Button("취소", role: .cancel) {}
         }
         .navigationTitle("설정")
         .navigationBarTitleDisplayMode(.large)
