@@ -16,21 +16,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PokeService {
 
-    private static final Duration COOLDOWN = Duration.ofHours(1);
-
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
     private final PokeRepository pokeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final Duration cooldown;
 
     public PokeService(UserRepository userRepository,
                        FriendshipRepository friendshipRepository,
                        PokeRepository pokeRepository,
-                       ApplicationEventPublisher eventPublisher) {
+                       ApplicationEventPublisher eventPublisher,
+                       PokeProperties pokeProperties) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.pokeRepository = pokeRepository;
         this.eventPublisher = eventPublisher;
+        this.cooldown = Duration.ofSeconds(pokeProperties.cooldownSeconds());
     }
 
     @Transactional
@@ -47,7 +48,7 @@ public class PokeService {
         // 같은 상대에게 1시간 쿨다운
         pokeRepository.findTopByFromUserAndToUserOrderByCreatedAtDesc(me, to)
                 .ifPresent(last -> {
-                    if (last.getCreatedAt().isAfter(Instant.now().minus(COOLDOWN))) {
+                    if (last.getCreatedAt().isAfter(Instant.now().minus(cooldown))) {
                         log.warn("[콕] 차단: 쿨다운 from={} to={} 마지막={}", meId, toUserId, last.getCreatedAt());
                         throw new BusinessException(ErrorCode.POKE_COOLDOWN);
                     }
