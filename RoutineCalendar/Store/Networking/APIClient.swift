@@ -117,6 +117,11 @@ final class APIClient: @unchecked Sendable {
 
     func logout() { tokens.clear() }
 
+    /// 닉네임(친구에게 보이는 이름) 변경 → 갱신된 내 정보 반환.
+    func updateNickname(_ nickname: String) async throws -> UserDTO {
+        try await send("PATCH", "/me", body: ["nickname": nickname])
+    }
+
     // MARK: 친구
 
     func friends() async throws -> [FriendDTO] {

@@ -70,6 +70,22 @@ final class SessionStore {
         currentUser = nil
     }
 
+    // MARK: - 닉네임 변경 (친구에게 보이는 이름)
+
+    /// 서버에 닉네임을 저장하고 currentUser를 갱신. 성공 시 true.
+    @discardableResult
+    func updateNickname(_ nickname: String) async -> Bool {
+        let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        do {
+            currentUser = try await APIClient.shared.updateNickname(trimmed)
+            return true
+        } catch {
+            loginError = error.localizedDescription
+            return false
+        }
+    }
+
     /// 기기마다 고정된 가짜 kakaoId (dev-login용)
     private func stableDevKakaoId() -> Int64 {
         let defaults = UserDefaults.standard

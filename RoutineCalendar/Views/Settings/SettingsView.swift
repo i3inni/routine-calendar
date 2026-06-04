@@ -2,7 +2,11 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(SettingsStore.self) private var settings
+    @Environment(SessionStore.self) private var session
     @Environment(\.colorScheme) private var scheme
+
+    @State private var nameDraft = ""
+    @State private var isSavingName = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -10,17 +14,22 @@ struct SettingsView: View {
             Color.rcBg(scheme).ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // 내 이름 (친구에게 표시됨)
+                    // 내 이름 (친구에게 표시됨) — 서버 닉네임과 연동
                     SectionLabel("내 이름")
                     SettingsCard(scheme: scheme) {
-                        TextField("친구에게 표시될 이름", text: $settings.myDisplayName)
-                            .font(.rcBody)
-                            .foregroundStyle(Color.rcText(scheme))
-                            .submitLabel(.done)
-                            .padding()
-                            .onChange(of: settings.myDisplayName) { settings.save() }
+                        HStack(spacing: 8) {
+                            TextField("친구에게 표시될 이름", text: $nameDraft)
+                                .font(.rcBody)
+                                .foregroundStyle(Color.rcText(scheme))
+                                .submitLabel(.done)
+                                .onSubmit { saveNickname() }
+                            if isSavingName {
+                                ProgressView()
+                            }
+                        }
+                        .padding()
                     }
-                    Text("친구 목록에서 다른 사람에게 보이는 이름이에요.")
+                    Text("친구 목록에서 다른 사람에게 보이는 이름이에요. 입력 후 완료를 누르면 저장돼요.")
                         .font(.system(size: 12.5))
                         .foregroundStyle(Color.rcText2(scheme))
                         .padding(.horizontal, 20)
@@ -91,6 +100,21 @@ struct SettingsView: View {
         }
         .navigationTitle("설정")
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            if nameDraft.isEmpty { nameDraft = session.currentUser?.nickname ?? "" }
+        }
+    }
+
+    /// 입력한 닉네임을 서버에 저장 (변경 없으면 무시).
+    private func saveNickname() {
+        let name = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != session.currentUser?.nickname else { return }
+        isSavingName = true
+        Task {
+            await session.updateNickname(name)
+            nameDraft = session.currentUser?.nickname ?? name
+            isSavingName = false
+        }
     }
 
     // MARK: Previews
