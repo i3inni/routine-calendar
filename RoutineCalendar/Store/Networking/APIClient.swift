@@ -47,6 +47,10 @@ struct FriendRequestDTO: Decodable {
     let fromProfileImageUrl: String?
 }
 
+struct ConfigDTO: Decodable {
+    let pokeCooldownSeconds: Int
+}
+
 struct ErrorResponseDTO: Decodable {
     let code: String
     let message: String
@@ -116,6 +120,11 @@ final class APIClient: @unchecked Sendable {
     }
 
     func logout() { tokens.clear() }
+
+    /// 서버 설정값(콕 쿨다운 등). 인증 불필요.
+    func config() async throws -> ConfigDTO {
+        try await send("GET", "/config", authorized: false)
+    }
 
     /// 닉네임(친구에게 보이는 이름) 변경 → 갱신된 내 정보 반환.
     func updateNickname(_ nickname: String) async throws -> UserDTO {

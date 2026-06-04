@@ -32,6 +32,10 @@ final class FriendsStore {
     // MARK: - 초기화 / 갱신
 
     func setup() async {
+        // 서버가 정한 콕 쿨다운(환경변수)을 받아와 표시에 사용
+        if let cfg = try? await api.config() {
+            pokeCooldown = TimeInterval(cfg.pokeCooldownSeconds)
+        }
         await refresh()
     }
 
@@ -95,7 +99,8 @@ final class FriendsStore {
 
     // MARK: - 콕 찌르기 (친구별 1시간 쿨다운; 서버도 검증)
 
-    private let pokeCooldown: TimeInterval = 3600
+    // 서버 /config 값으로 갱신됨(기본 3600초)
+    private var pokeCooldown: TimeInterval = 3600
     private(set) var pokeTimes: [String: Date] = [:]
 
     func canPoke(_ friend: Friend) -> Bool {
@@ -107,6 +112,10 @@ final class FriendsStore {
         guard let last = pokeTimes[friend.id] else { return nil }
         let remaining = pokeCooldown - Date().timeIntervalSince(last)
         guard remaining > 0 else { return nil }
+        // 1분 미만이면 초 단위로, 그 이상은 분 단위로 표시
+        if remaining < 60 {
+            return "\(Int(ceil(remaining)))초 후"
+        }
         return "\(Int(ceil(remaining / 60)))분 후"
     }
 
