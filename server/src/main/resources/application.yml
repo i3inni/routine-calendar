@@ -1,3 +1,7 @@
+server:
+  # Railway 등 PaaS는 PORT 환경변수를 주입한다. 로컬은 8080.
+  port: ${PORT:8080}
+
 spring:
   application:
     name: routine-calendar-server
