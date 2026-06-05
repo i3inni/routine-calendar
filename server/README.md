@@ -67,22 +67,24 @@ docker run -p 8080:8080 --env-file server/.env routine-server
 
 > 스키마는 **Flyway가 소유**한다. JPA는 `ddl-auto: validate`로 엔티티↔스키마 일치만 검증한다.
 
-## 패키지 구조 (package-by-feature)
+## 패키지 구조 (package-by-feature + 계층 분리)
+각 도메인을 `controller / service / repository / domain / dto`로 나눈다. (엔티티·enum·이벤트 → `domain/`)
 ```
-config/        SecurityConfig, Jwt/Kakao/Apple/AuthProperties
-security/      JwtTokenProvider, JwtAuthenticationFilter
-auth/          AuthController/Service, KakaoApiClient, AppleTokenVerifier, DTO
-user/          User, UserService, MeController, MeDtos, UserPurgeScheduler, Repository
-friend/        Friendship, FriendRequest(+Status), Service, Repository
-poke/          Poke, PokeService, PokeProperties, Repository
-summary/       DailySummary, DailySummaryRepository
-device/        DeviceToken(+Platform), DeviceTokenRepository
-push/          ApnsClient, PushService, PushEventListener, ApnsProperties
-common/error/  ErrorCode, BusinessException, GlobalExceptionHandler
-web/           HealthController, ConfigController, WellKnownController(AASA), PrivacyController
+auth/      controller · service(KakaoApiClient, AppleTokenVerifier) · dto
+user/      controller · service(+UserPurgeScheduler) · repository · domain · dto
+friend/    controller · service · repository · domain(Friendship, FriendRequest(+Status), Event) · dto
+poke/      controller · service · repository · domain(Poke, PokeEvent)
+summary/   controller · service · repository · domain · dto
+device/    controller · service · repository · domain(DeviceToken, Platform) · dto
+push/      service(ApnsClient, PushService, PushEventListener)
+security/  JwtTokenProvider, JwtAuthenticationFilter
+config/    SecurityConfig, AsyncConfig, *Properties(Jwt/Kakao/Auth/Apple/Poke/Apns 통일)
+common/    error(ErrorCode, BusinessException, GlobalExceptionHandler), AppTime
+web/       HealthController, ConfigController, WellKnown(AASA), Privacy/SupportController
 ```
 
-> 코드를 한 줄씩 공부하려면 [`docs/`](docs/README.md)의 정독 가이드 참고.
+> - 기능별 구현·어노테이션·동시성 처리 상세: [`FEATURES.md`](FEATURES.md)
+> - 코드 한 줄씩 정독: [`docs/`](docs/README.md)
 
 ## 인증 (Kakao / Apple 로그인 + JWT)
 
