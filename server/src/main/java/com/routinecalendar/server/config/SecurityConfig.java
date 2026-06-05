@@ -36,8 +36,8 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/api/ping", "/actuator/health", "/config").permitAll()
-                        // Universal Links: AASA 파일 + 친구추가 폴백 페이지 + 개인정보 처리방침은 공개
-                        .requestMatchers("/.well-known/**", "/add-friend", "/privacy").permitAll()
+                        // Universal Links: AASA 파일 + 친구추가 폴백 페이지 + 개인정보/지원 페이지는 공개
+                        .requestMatchers("/.well-known/**", "/add-friend", "/privacy", "/support").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 인증 실패 시 302 리다이렉트 대신 깔끔하게 401
