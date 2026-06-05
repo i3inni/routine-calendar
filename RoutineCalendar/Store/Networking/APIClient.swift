@@ -37,6 +37,7 @@ struct FriendDTO: Decodable {
     let streak: Int
     let done: [String]
     let remaining: [String]
+    let lastPokedAtMillis: Int64?   // 내가 이 친구를 마지막으로 콕한 시각(epoch ms)
 }
 
 struct FriendRequestDTO: Decodable {

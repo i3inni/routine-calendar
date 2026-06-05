@@ -9,6 +9,7 @@ struct Friend: Identifiable, Codable {
     var remaining: [String]    // 오늘 미완료 루틴 이름
     var done: [String]         // 오늘 완료 루틴 이름
     var streak: Int
+    var lastPokedAt: Date?     // 내가 마지막으로 콕한 시각(서버 기준, 쿨다운 표시용)
 
     var isAllDone: Bool { totalToday > 0 && doneToday >= totalToday }
 

@@ -11,10 +11,12 @@ import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendRequestResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendResponse;
+import com.routinecalendar.server.poke.repository.PokeRepository;
 import com.routinecalendar.server.summary.domain.DailySummary;
 import com.routinecalendar.server.summary.repository.DailySummaryRepository;
 import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -31,17 +33,20 @@ public class FriendService {
     private final FriendshipRepository friendshipRepository;
     private final FriendRequestRepository friendRequestRepository;
     private final DailySummaryRepository dailySummaryRepository;
+    private final PokeRepository pokeRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public FriendService(UserRepository userRepository,
                          FriendshipRepository friendshipRepository,
                          FriendRequestRepository friendRequestRepository,
                          DailySummaryRepository dailySummaryRepository,
+                         PokeRepository pokeRepository,
                          ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.friendRequestRepository = friendRequestRepository;
         this.dailySummaryRepository = dailySummaryRepository;
+        this.pokeRepository = pokeRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -62,8 +67,12 @@ public class FriendService {
                 .findByUserInAndSummaryDate(friends, today).stream()
                 .collect(Collectors.toMap(s -> s.getUser().getId(), Function.identity()));
 
+        // 내가 각 친구에게 보낸 '마지막 콕 시각'을 한 번에 (쿨다운 표시용, 로그아웃에도 유지됨)
+        Map<Long, Instant> lastPokes = pokeRepository.findLastPokeAtByMeTo(me, friends).stream()
+                .collect(Collectors.toMap(r -> (Long) r[0], r -> (Instant) r[1]));
+
         return friends.stream()
-                .map(u -> toFriendResponse(u, summaries.get(u.getId())))
+                .map(u -> toFriendResponse(u, summaries.get(u.getId()), lastPokes.get(u.getId())))
                 .toList();
     }
 
@@ -159,15 +168,16 @@ public class FriendService {
         return f.getUserLow().getId().equals(me.getId()) ? f.getUserHigh() : f.getUserLow();
     }
 
-    private FriendResponse toFriendResponse(User user, DailySummary summary) {
+    private FriendResponse toFriendResponse(User user, DailySummary summary, Instant lastPokedAt) {
+        Long lastPokedMillis = lastPokedAt != null ? lastPokedAt.toEpochMilli() : null;
         if (summary == null) {
             return new FriendResponse(user.getId(), user.getHandle(), user.getNickname(),
-                    user.getProfileImageUrl(), 0, 0, 0, List.of(), List.of());
+                    user.getProfileImageUrl(), 0, 0, 0, List.of(), List.of(), lastPokedMillis);
         }
         return new FriendResponse(user.getId(), user.getHandle(), user.getNickname(),
                 user.getProfileImageUrl(),
                 summary.getDoneCount(), summary.getTotalCount(), summary.getStreak(),
-                summary.getDoneNames(), summary.getRemainingNames());
+                summary.getDoneNames(), summary.getRemainingNames(), lastPokedMillis);
     }
 
     private FriendRequestResponse toRequestResponse(FriendRequest request) {

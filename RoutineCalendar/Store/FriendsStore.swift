@@ -103,13 +103,19 @@ final class FriendsStore {
     private var pokeCooldown: TimeInterval = 3600
     private(set) var pokeTimes: [String: Date] = [:]
 
+    /// 서버 기준 마지막 콕(lastPokedAt)과 로컬 낙관적 기록 중 더 최근 값.
+    /// → 로그아웃/앱 재시작에도 서버 값이 남아 쿨다운이 유지된다.
+    private func lastPokeTime(_ friend: Friend) -> Date? {
+        [friend.lastPokedAt, pokeTimes[friend.id]].compactMap { $0 }.max()
+    }
+
     func canPoke(_ friend: Friend) -> Bool {
-        guard let last = pokeTimes[friend.id] else { return true }
+        guard let last = lastPokeTime(friend) else { return true }
         return Date().timeIntervalSince(last) >= pokeCooldown
     }
 
     func pokeRemainingLabel(_ friend: Friend) -> String? {
-        guard let last = pokeTimes[friend.id] else { return nil }
+        guard let last = lastPokeTime(friend) else { return nil }
         let remaining = pokeCooldown - Date().timeIntervalSince(last)
         guard remaining > 0 else { return nil }
         // 1분 미만이면 초 단위로, 그 이상은 분 단위로 표시
@@ -138,7 +144,8 @@ private extension Friend {
             totalToday: dto.totalToday,
             remaining: dto.remaining,
             done: dto.done,
-            streak: dto.streak
+            streak: dto.streak,
+            lastPokedAt: dto.lastPokedAtMillis.map { Date(timeIntervalSince1970: Double($0) / 1000) }
         )
     }
 }

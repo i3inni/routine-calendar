@@ -40,7 +40,8 @@ public final class FriendDtos {
             int totalToday,
             int streak,
             List<String> done,
-            List<String> remaining
+            List<String> remaining,
+            Long lastPokedAtMillis   // 내가 이 친구를 마지막으로 콕한 시각(epoch ms). 없으면 null
     ) {
     }
 }
