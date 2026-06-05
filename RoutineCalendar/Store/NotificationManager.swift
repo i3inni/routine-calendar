@@ -44,25 +44,6 @@ final class NotificationManager {
 
     // MARK: - 콕 찌르기 수신 알림
     // 서버 연결 전: FriendsStore.poke() 호출 시 로컬 알림으로 수신 시뮬레이션
-    // 서버 연결 후: Spring Boot → APNs 원격 푸시로 대체
-
-    func sendPokeNotification(from senderName: String) {
-        let content = UNMutableNotificationContent()
-        content.title = "\(senderName)님이 콕 찔렀어요"
-        content.body = "함께 루틴 해요"
-        content.sound = .default
-        content.interruptionLevel = .active
-        attachIcon(to: content)
-
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-        let request = UNNotificationRequest(
-            identifier: "poke_\(UUID().uuidString)",
-            content: content,
-            trigger: trigger
-        )
-        UNUserNotificationCenter.current().add(request)
-    }
-
     // MARK: - 야간 스트릭 지킴이 (오후 9시, 오늘 루틴 미완료 시)
 
     func scheduleStreakGuard(remainingCount: Int) {

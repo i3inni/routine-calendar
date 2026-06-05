@@ -1,7 +1,6 @@
 package com.routinecalendar.server.friend.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.List;
 
@@ -13,10 +12,6 @@ public final class FriendDtos {
 
     /** 친구 요청 보내기: 상대 handle로 검색해서 보낸다. */
     public record SendFriendRequest(@NotBlank String handle) {
-    }
-
-    /** 콕 찌르기 대상 */
-    public record PokeRequest(@NotNull Long toUserId) {
     }
 
     /** 내가 받은 친구 요청 1건 */
@@ -40,8 +35,7 @@ public final class FriendDtos {
             int totalToday,
             int streak,
             List<String> done,
-            List<String> remaining,
-            Long lastPokedAtMillis   // 내가 이 친구를 마지막으로 콕한 시각(epoch ms). 없으면 null
+            List<String> remaining
     ) {
     }
 }

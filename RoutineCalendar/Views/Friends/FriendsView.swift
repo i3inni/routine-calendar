@@ -77,12 +77,7 @@ struct FriendsView: View {
                                 scheme: scheme,
                                 onDelete: { friendsStore.removeFriend(friend) }
                             ) {
-                                FriendCardView(
-                                    friend: friend,
-                                    canPoke: friendsStore.canPoke(friend),
-                                    pokeRemainingLabel: friendsStore.pokeRemainingLabel(friend),
-                                    onPoke: { friendsStore.poke(friend) }
-                                )
+                                FriendCardView(friend: friend)
                             }
                         }
 

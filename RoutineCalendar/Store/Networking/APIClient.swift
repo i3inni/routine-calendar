@@ -37,7 +37,6 @@ struct FriendDTO: Decodable {
     let streak: Int
     let done: [String]
     let remaining: [String]
-    let lastPokedAtMillis: Int64?   // 내가 이 친구를 마지막으로 콕한 시각(epoch ms)
 }
 
 struct FriendRequestDTO: Decodable {
@@ -46,10 +45,6 @@ struct FriendRequestDTO: Decodable {
     let fromHandle: String
     let fromNickname: String
     let fromProfileImageUrl: String?
-}
-
-struct ConfigDTO: Decodable {
-    let pokeCooldownSeconds: Int
 }
 
 struct ErrorResponseDTO: Decodable {
@@ -134,11 +129,6 @@ final class APIClient: @unchecked Sendable {
 
     func logout() { tokens.clear() }
 
-    /// 서버 설정값(콕 쿨다운 등). 인증 불필요.
-    func config() async throws -> ConfigDTO {
-        try await send("GET", "/config", authorized: false)
-    }
-
     /// 닉네임(친구에게 보이는 이름) 변경 → 갱신된 내 정보 반환.
     func updateNickname(_ nickname: String) async throws -> UserDTO {
         try await send("PATCH", "/me", body: ["nickname": nickname])
@@ -173,10 +163,6 @@ final class APIClient: @unchecked Sendable {
 
     func removeFriend(_ userId: Int64) async throws {
         try await sendNoContent("DELETE", "/me/friends/\(userId)")
-    }
-
-    func poke(toUserId: Int64) async throws {
-        try await sendNoContent("POST", "/pokes", body: ["toUserId": toUserId])
     }
 
     func uploadSummary(done: [String], remaining: [String], streak: Int) async throws {

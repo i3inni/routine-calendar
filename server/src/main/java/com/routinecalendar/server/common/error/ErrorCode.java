@@ -28,11 +28,7 @@ public enum ErrorCode {
     ALREADY_FRIEND(HttpStatus.CONFLICT, "FRIEND_409_1", "이미 친구입니다."),
     FRIEND_REQUEST_ALREADY_SENT(HttpStatus.CONFLICT, "FRIEND_409_2", "이미 친구 요청을 보냈습니다."),
     FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND_404_1", "친구 요청을 찾을 수 없습니다."),
-    FRIEND_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "FRIEND_403_1", "처리할 수 없는 친구 요청입니다."),
-
-    // 콕 찌르기
-    POKE_NOT_FRIEND(HttpStatus.FORBIDDEN, "POKE_403_1", "친구에게만 콕 찌를 수 있습니다."),
-    POKE_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "POKE_429_1", "아직 다시 콕 찌를 수 없습니다.");
+    FRIEND_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "FRIEND_403_1", "처리할 수 없는 친구 요청입니다.");
 
     private final HttpStatus status;
     private final String code;

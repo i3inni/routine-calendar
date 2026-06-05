@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/api/ping", "/actuator/health", "/config").permitAll()
+                        .requestMatchers("/auth/**", "/api/ping", "/actuator/health").permitAll()
                         // Universal Links: AASA 파일 + 친구추가 폴백 페이지 + 개인정보/지원 페이지는 공개
                         .requestMatchers("/.well-known/**", "/add-friend", "/privacy", "/support").permitAll()
                         .anyRequest().authenticated()

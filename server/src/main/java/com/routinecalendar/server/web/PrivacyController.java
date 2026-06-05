@@ -37,9 +37,9 @@ public class PrivacyController {
                     <tr><th>항목</th><th>목적</th></tr>
                     <tr><td>카카오 로그인 정보(회원번호, 닉네임, 프로필 이미지)</td><td>로그인, 친구 목록에 표시</td></tr>
                     <tr><td>Apple 로그인 정보(사용자 식별자, 이름)</td><td>로그인, 친구 목록에 표시</td></tr>
-                    <tr><td>기기 푸시 토큰</td><td>친구의 ‘콕 찌르기’·요청 알림 발송</td></tr>
+                    <tr><td>기기 푸시 토큰</td><td>친구 요청 등 알림 발송</td></tr>
                     <tr><td>루틴 요약(완료/남은 루틴 이름, 연속일수)</td><td>친구와 진행 상황 공유</td></tr>
-                    <tr><td>친구 관계, 콕 기록</td><td>친구 기능 제공</td></tr>
+                    <tr><td>친구 관계</td><td>친구 기능 제공</td></tr>
                   </table>
 
                   <h2>2. 보관 및 파기</h2>

@@ -32,10 +32,6 @@ final class FriendsStore {
     // MARK: - 초기화 / 갱신
 
     func setup() async {
-        // 서버가 정한 콕 쿨다운(환경변수)을 받아와 표시에 사용
-        if let cfg = try? await api.config() {
-            pokeCooldown = TimeInterval(cfg.pokeCooldownSeconds)
-        }
         await refresh()
     }
 
@@ -92,43 +88,8 @@ final class FriendsStore {
 
     func removeFriend(_ friend: Friend) {
         friends.removeAll { $0.id == friend.id }
-        pokeTimes.removeValue(forKey: friend.id)
         guard let id = Int64(friend.id) else { return }
         Task { try? await api.removeFriend(id) }
-    }
-
-    // MARK: - 콕 찌르기 (친구별 1시간 쿨다운; 서버도 검증)
-
-    // 서버 /config 값으로 갱신됨(기본 3600초)
-    private var pokeCooldown: TimeInterval = 3600
-    private(set) var pokeTimes: [String: Date] = [:]
-
-    /// 서버 기준 마지막 콕(lastPokedAt)과 로컬 낙관적 기록 중 더 최근 값.
-    /// → 로그아웃/앱 재시작에도 서버 값이 남아 쿨다운이 유지된다.
-    private func lastPokeTime(_ friend: Friend) -> Date? {
-        [friend.lastPokedAt, pokeTimes[friend.id]].compactMap { $0 }.max()
-    }
-
-    func canPoke(_ friend: Friend) -> Bool {
-        guard let last = lastPokeTime(friend) else { return true }
-        return Date().timeIntervalSince(last) >= pokeCooldown
-    }
-
-    func pokeRemainingLabel(_ friend: Friend) -> String? {
-        guard let last = lastPokeTime(friend) else { return nil }
-        let remaining = pokeCooldown - Date().timeIntervalSince(last)
-        guard remaining > 0 else { return nil }
-        // 1분 미만이면 초 단위로, 그 이상은 분 단위로 표시
-        if remaining < 60 {
-            return "\(Int(ceil(remaining)))초 후"
-        }
-        return "\(Int(ceil(remaining / 60)))분 후"
-    }
-
-    func poke(_ friend: Friend) {
-        guard canPoke(friend), let id = Int64(friend.id) else { return }
-        pokeTimes[friend.id] = Date()
-        Task { try? await api.poke(toUserId: id) }
     }
 }
 
@@ -144,8 +105,7 @@ private extension Friend {
             totalToday: dto.totalToday,
             remaining: dto.remaining,
             done: dto.done,
-            streak: dto.streak,
-            lastPokedAt: dto.lastPokedAtMillis.map { Date(timeIntervalSince1970: Double($0) / 1000) }
+            streak: dto.streak
         )
     }
 }
