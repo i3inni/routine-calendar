@@ -48,6 +48,9 @@ targets:
         # ⚠️ 실제 배포 도메인이 바뀌면 여기 + 서버 AASA + API_BASE_URL 도 함께 수정.
         com.apple.developer.associated-domains:
           - applinks:routine-calendar.kodeploy.com
+        # Sign in with Apple
+        com.apple.developer.applesignin:
+          - Default
     info:
       path: RoutineCalendar/Info.plist
       properties:

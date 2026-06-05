@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @Environment(SessionStore.self) private var session
@@ -40,6 +41,17 @@ struct LoginView: View {
                     .padding(.vertical, 15)
                     .background(Color(hex: "FEE500"), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
+                .disabled(session.isLoggingIn)
+
+                // 애플 로그인 (App Store 정책상 소셜 로그인과 함께 제공)
+                SignInWithAppleButton(.signIn) { request in
+                    request.requestedScopes = [.fullName]
+                } onCompletion: { result in
+                    Task { await session.loginWithApple(result) }
+                }
+                .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
+                .frame(height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .disabled(session.isLoggingIn)
 
                 // 개발용 로그인 (카카오 키 미설정 시 노출)

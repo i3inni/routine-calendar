@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import AuthenticationServices
 
 /// 로그인 세션 상태 + 자동 로그인.
 ///
@@ -47,6 +48,41 @@ final class SessionStore {
         } catch {
             loginError = error.localizedDescription
         }
+    }
+
+    // MARK: - 애플 로그인
+
+    func loginWithApple(_ result: Result<ASAuthorization, Error>) async {
+        loginError = nil
+        switch result {
+        case .failure(let error):
+            // 사용자가 취소한 경우는 에러로 표시하지 않음
+            if (error as? ASAuthorizationError)?.code == .canceled { return }
+            loginError = error.localizedDescription
+        case .success(let auth):
+            guard let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken,
+                  let identityToken = String(data: tokenData, encoding: .utf8) else {
+                loginError = "애플 로그인 정보를 가져오지 못했어요."
+                return
+            }
+            isLoggingIn = true
+            defer { isLoggingIn = false }
+            // 이름은 최초 로그인 때만 들어온다.
+            let name = credential.fullName.flatMap(Self.formatName)
+            do {
+                currentUser = try await APIClient.shared.appleLogin(identityToken: identityToken, name: name)
+                isOffline = false
+            } catch {
+                loginError = error.localizedDescription
+            }
+        }
+    }
+
+    private static func formatName(_ comps: PersonNameComponents) -> String? {
+        let formatter = PersonNameComponentsFormatter()
+        let s = formatter.string(from: comps).trimmingCharacters(in: .whitespaces)
+        return s.isEmpty ? nil : s
     }
 
     // MARK: - 개발용 로그인 (카카오 키 없이)

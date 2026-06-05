@@ -97,6 +97,18 @@ final class APIClient: @unchecked Sendable {
         return res.user
     }
 
+    func appleLogin(identityToken: String, name: String?) async throws -> UserDTO {
+        var body: [String: Any] = ["identityToken": identityToken]
+        if let name, !name.isEmpty { body["name"] = name }
+        let res: AuthResponseDTO = try await send(
+            "POST", "/auth/apple",
+            body: body,
+            authorized: false
+        )
+        tokens.save(access: res.accessToken, refresh: res.refreshToken)
+        return res.user
+    }
+
     func devLogin(kakaoId: Int64, nickname: String) async throws -> UserDTO {
         let res: AuthResponseDTO = try await send(
             "POST", "/auth/dev-login",
