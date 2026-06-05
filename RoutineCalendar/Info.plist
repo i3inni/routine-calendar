@@ -24,7 +24,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.yourteam.routinecalendar</string>
+			<string>com.i3inni.routinecalendar</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>routinecalendar</string>
@@ -32,7 +32,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.yourteam.routinecalendar.kakao</string>
+			<string>com.i3inni.routinecalendar.kakao</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>kakao$(KAKAO_NATIVE_APP_KEY)</string>

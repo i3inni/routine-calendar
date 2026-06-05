@@ -1,7 +1,7 @@
 name: RoutineCalendar
 
 options:
-  bundleIdPrefix: com.yourteam
+  bundleIdPrefix: com.i3inni
   deploymentTarget:
     iOS: "17.0"
   xcodeVersion: "16.0"
@@ -42,7 +42,7 @@ targets:
       path: RoutineCalendar/RoutineCalendar.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.yourteam.routinecalendar
+          - group.com.i3inni.routinecalendar
         aps-environment: production
         # Universal Links: 이 도메인의 https 링크를 앱이 가로챈다.
         # ⚠️ 실제 배포 도메인이 바뀌면 여기 + 서버 AASA + API_BASE_URL 도 함께 수정.
@@ -76,17 +76,17 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - routinecalendar
-            CFBundleURLName: com.yourteam.routinecalendar
+            CFBundleURLName: com.i3inni.routinecalendar
           - CFBundleURLSchemes:
               - kakao$(KAKAO_NATIVE_APP_KEY)
-            CFBundleURLName: com.yourteam.routinecalendar.kakao
+            CFBundleURLName: com.i3inni.routinecalendar.kakao
         # 카카오톡 앱으로 로그인/공유 시 필요
         LSApplicationQueriesSchemes:
           - kakaokompassauth
           - kakaolink
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.yourteam.routinecalendar
+        PRODUCT_BUNDLE_IDENTIFIER: com.i3inni.routinecalendar
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "DBDJ2HDBU2"
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
@@ -125,7 +125,7 @@ targets:
       path: RoutineCalendarWidget/RoutineCalendarWidget.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.yourteam.routinecalendar
+          - group.com.i3inni.routinecalendar
     info:
       path: RoutineCalendarWidget/Info.plist
       properties:
@@ -137,7 +137,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.yourteam.routinecalendar.widget
+        PRODUCT_BUNDLE_IDENTIFIER: com.i3inni.routinecalendar.widget
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "DBDJ2HDBU2"
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES

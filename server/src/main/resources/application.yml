@@ -34,7 +34,7 @@ app:
     user-info-uri: https://kapi.kakao.com/v2/user/me
   apple:
     # 네이티브 애플 로그인 신원토큰의 aud == 앱 번들ID. 이 값과 일치해야 검증 통과.
-    client-id: ${APPLE_CLIENT_ID:com.yourteam.routinecalendar}
+    client-id: ${APPLE_CLIENT_ID:com.i3inni.routinecalendar}
   auth:
     # 카카오 없이 JWT를 발급받는 개발용 로그인. 운영(prod)에선 반드시 false.
     dev-login-enabled: ${DEV_LOGIN_ENABLED:true}
@@ -47,7 +47,7 @@ app:
     use-sandbox: ${APNS_SANDBOX:true}      # 개발 빌드는 sandbox
     team-id: ${APNS_TEAM_ID:}
     key-id: ${APNS_KEY_ID:}
-    bundle-id: ${APNS_BUNDLE_ID:com.yourteam.routinecalendar}
+    bundle-id: ${APNS_BUNDLE_ID:com.i3inni.routinecalendar}
     private-key: ${APNS_PRIVATE_KEY:}      # .p8 PEM 내용
 
 logging:

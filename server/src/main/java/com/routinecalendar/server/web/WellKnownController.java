@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class WellKnownController {
 
     // TeamID(DEVELOPMENT_TEAM) + BundleID. 둘 중 하나라도 바뀌면 여기도 수정.
-    private static final String APP_ID = "DBDJ2HDBU2.com.yourteam.routinecalendar";
+    private static final String APP_ID = "DBDJ2HDBU2.com.i3inni.routinecalendar";
 
     /**
      * AASA. 반드시 application/json 으로, 리다이렉트 없이, HTTPS로 응답되어야 한다.
