@@ -57,7 +57,7 @@ docker run -p 8080:8080 --env-file server/.env routine-server
 > `DB_URL`은 `jdbc:` 접두사를 붙여 따로 구성한다.
 
 ## 스키마 (Flyway)
-- `V1__init.sql` 6개 테이블 / `V2__add_apple_login.sql` 애플 로그인용 컬럼 추가
+- `V1__init.sql` 6개 테이블 / `V2__add_apple_login.sql` 애플 컬럼 / `V3__add_account_deletion.sql` 삭제 유예 컬럼
 - **users** — 로그인 신원(`kakao_id` 또는 `apple_id`, 둘 중 하나) + 친구추가용 공개 `handle`
 - **friendships** — 친구 관계. `(user_low_id < user_high_id)` 한 행으로 정규화(중복 방지)
 - **friend_requests** — 친구 요청. 같은 방향 PENDING은 부분 유니크 인덱스로 1건 제한
@@ -72,14 +72,14 @@ docker run -p 8080:8080 --env-file server/.env routine-server
 config/        SecurityConfig, Jwt/Kakao/Apple/AuthProperties
 security/      JwtTokenProvider, JwtAuthenticationFilter
 auth/          AuthController/Service, KakaoApiClient, AppleTokenVerifier, DTO
-user/          User, UserService, MeController, MeDtos, Repository
+user/          User, UserService, MeController, MeDtos, UserPurgeScheduler, Repository
 friend/        Friendship, FriendRequest(+Status), Service, Repository
 poke/          Poke, PokeService, PokeProperties, Repository
 summary/       DailySummary, DailySummaryRepository
 device/        DeviceToken(+Platform), DeviceTokenRepository
 push/          ApnsClient, PushService, PushEventListener, ApnsProperties
 common/error/  ErrorCode, BusinessException, GlobalExceptionHandler
-web/           HealthController, ConfigController, WellKnownController(AASA)
+web/           HealthController, ConfigController, WellKnownController(AASA), PrivacyController
 ```
 
 > 코드를 한 줄씩 공부하려면 [`docs/`](docs/README.md)의 정독 가이드 참고.
@@ -97,9 +97,14 @@ web/           HealthController, ConfigController, WellKnownController(AASA)
 | POST | `/auth/dev-login` | 카카오 없이 로그인(개발용, `app.auth.dev-login-enabled=true`) |
 | GET | `/me` | 내 정보 (access 토큰 필요) |
 | PATCH | `/me` | `{ nickname }` 닉네임(친구에게 보이는 이름) 변경 |
+| DELETE | `/me` | 계정 삭제 예약(3일 유예). `{ deletionScheduledAt }` 반환 |
 
 **애플 로그인 검증**(`AppleTokenVerifier`): 앱이 보낸 신원토큰(JWT)을 애플 JWKS(`/auth/keys`)로
 서명 검증 + `iss`(appleid.apple.com)/`aud`(앱 번들ID=`app.apple.client-id`)/만료 확인 → `sub`로 회원 식별.
+
+**계정 삭제(유예 패턴)**: `DELETE /me`는 바로 지우지 않고 `deletion_requested_at`만 기록(soft delete) →
+**3일 내 재로그인하면 자동 취소**(`reactivateIfPending`), 지나면 `UserPurgeScheduler`(매일 04시 KST)가
+영구 삭제(연관 데이터는 DB `ON DELETE CASCADE`). App Store의 "계정 삭제 제공" 요건 충족.
 이름은 애플이 **최초 로그인 때만** 주므로 그때 저장한다.
 
 **자동 로그인:** 앱은 로그인 시 받은 `refreshToken`을 Keychain에 저장하고 실행할 때마다
