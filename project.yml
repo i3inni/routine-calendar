@@ -58,6 +58,8 @@ targets:
         CFBundleDisplayName: 같이해
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
+        # 표준 HTTPS/TLS만 사용 → 수출규정 비해당. 업로드마다 묻는 질문 제거.
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
