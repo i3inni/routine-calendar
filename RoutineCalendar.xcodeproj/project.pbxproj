@@ -147,7 +147,7 @@
 		FB137ABA521BF30642477F91 /* FriendCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendCardView.swift; sourceTree = "<group>"; };
 		FC851842E194A0A9A50B9204 /* Friend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Friend.swift; sourceTree = "<group>"; };
 		FEEAA2BD26186173E0CB0D93 /* LockScreenCircularView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenCircularView.swift; sourceTree = "<group>"; };
-		"TEMP_7AA75DB8-6B6D-4099-8B16-F8E11104C8A3" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		"TEMP_649E4F24-E1AC-4FED-BAAD-E42FD23E617A" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -368,10 +368,10 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		"TEMP_A649CFE7-4AAA-4CF7-92CA-BFF30EBCD2A0" /* routine_calendar */ = {
+		"TEMP_37CF5F18-3C0F-48E5-A073-B886D5E696E8" /* routine_calendar */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_7AA75DB8-6B6D-4099-8B16-F8E11104C8A3" /* Config.xcconfig */,
+				"TEMP_649E4F24-E1AC-4FED-BAAD-E42FD23E617A" /* Config.xcconfig */,
 			);
 			path = routine_calendar;
 			sourceTree = "<group>";
@@ -563,7 +563,7 @@
 /* Begin XCBuildConfiguration section */
 		3F09F7C32DBB6293A97C2157 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_7AA75DB8-6B6D-4099-8B16-F8E11104C8A3" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_649E4F24-E1AC-4FED-BAAD-E42FD23E617A" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -571,7 +571,7 @@
 				CODE_SIGN_ENTITLEMENTS = RoutineCalendar/RoutineCalendar.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DBDJ2HDBU2;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = RoutineCalendar/Info.plist;
@@ -716,7 +716,7 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = RoutineCalendarWidget/RoutineCalendarWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DBDJ2HDBU2;
 				INFOPLIST_FILE = RoutineCalendarWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -741,7 +741,7 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = RoutineCalendarWidget/RoutineCalendarWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DBDJ2HDBU2;
 				INFOPLIST_FILE = RoutineCalendarWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -760,7 +760,7 @@
 		};
 		F031B3C7DACB7E10FF27FFEB /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_7AA75DB8-6B6D-4099-8B16-F8E11104C8A3" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_649E4F24-E1AC-4FED-BAAD-E42FD23E617A" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -768,7 +768,7 @@
 				CODE_SIGN_ENTITLEMENTS = RoutineCalendar/RoutineCalendar.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DBDJ2HDBU2;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = RoutineCalendar/Info.plist;
