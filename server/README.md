@@ -70,14 +70,14 @@ docker run -p 8080:8080 --env-file server/.env routine-server
 config/        SecurityConfig, Jwt/Kakao/AuthProperties
 security/      JwtTokenProvider, JwtAuthenticationFilter
 auth/          AuthController/Service, KakaoApiClient, DTO
-user/          User, UserService, MeController, Repository
-friend/        Friendship, FriendRequest(+Status), Repository
-poke/          Poke, PokeRepository
+user/          User, UserService, MeController, MeDtos, Repository
+friend/        Friendship, FriendRequest(+Status), Service, Repository
+poke/          Poke, PokeService, PokeProperties, Repository
 summary/       DailySummary, DailySummaryRepository
 device/        DeviceToken(+Platform), DeviceTokenRepository
 push/          ApnsClient, PushService, PushEventListener, ApnsProperties
 common/error/  ErrorCode, BusinessException, GlobalExceptionHandler
-web/           HealthController, WellKnownController(AASA)
+web/           HealthController, ConfigController, WellKnownController(AASA)
 ```
 
 > 코드를 한 줄씩 공부하려면 [`docs/`](docs/README.md)의 정독 가이드 참고.
@@ -93,6 +93,7 @@ web/           HealthController, WellKnownController(AASA)
 | POST | `/auth/refresh` | `{ refreshToken }` → **자동 로그인**(토큰 회전) |
 | POST | `/auth/dev-login` | 카카오 없이 로그인(개발용, `app.auth.dev-login-enabled=true`) |
 | GET | `/me` | 내 정보 (access 토큰 필요) |
+| PATCH | `/me` | `{ nickname }` 닉네임(친구에게 보이는 이름) 변경 |
 
 **자동 로그인:** 앱은 로그인 시 받은 `refreshToken`을 Keychain에 저장하고 실행할 때마다
 `/auth/refresh`로 새 토큰을 받아 조용히 로그인 상태를 유지. refresh가 만료/실패(401)하면
@@ -111,11 +112,19 @@ web/           HealthController, WellKnownController(AASA)
 | POST | `/friend-requests/{id}/accept` | 수락 |
 | POST | `/friend-requests/{id}/decline` | 거절 |
 | DELETE | `/me/friends/{userId}` | 친구 끊기 (멱등) |
-| POST | `/pokes` | `{ toUserId }` 콕 찌르기 (친구만, 1h 쿨다운) |
+| POST | `/pokes` | `{ toUserId }` 콕 찌르기 (친구만, 쿨다운 적용) |
 | POST | `/me/summary` | `{ done[], remaining[], streak }` 오늘 요약 업로드(upsert) |
 
 설계 포인트: 친구 목록/받은요청은 **fetch join**으로 N+1 제거, 친구관계는 `existsBetween`/`findBetween`으로
-순서 무관 조회, 친구 끊기는 멱등 DELETE, 콕은 마지막 기록 기준 1시간 쿨다운.
+순서 무관 조회, 친구 끊기는 멱등 DELETE, 콕은 마지막 기록 기준 쿨다운.
+
+**콕 쿨다운은 설정값**: `app.poke.cooldown-seconds`(env `POKE_COOLDOWN_SECONDS`, 기본 3600). 테스트 땐 짧게.
+
+### 클라이언트 설정 조회 (인증 불필요)
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/config` | `{ pokeCooldownSeconds }` — 앱이 쿨다운 남은시간 표시에 사용 |
 
 ## 푸시 (APNs)
 
@@ -127,9 +136,22 @@ web/           HealthController, WellKnownController(AASA)
 | POST | `/me/device-token` | `{ token, platform? }` APNs 토큰 등록(upsert) |
 
 - `ApnsClient`: 토큰 기반(.p8) ES256 프로바이더 JWT(50분 캐시) + HTTP/2(`java.net.http`)로 발송.
-  410/Unregistered 응답 시 해당 토큰 폐기.
+  못 쓰는 토큰은 자동 폐기: `410 Unregistered`, `BadDeviceToken`, `BadEnvironmentKeyInToken`, `DeviceTokenNotForTopic`.
 - **`app.apns.enabled=false`(기본)면 실제 발송 대신 로그만** → 키 없이도 흐름 검증 가능.
   실제 발송하려면 `APNS_ENABLED=true` + `APNS_TEAM_ID`/`APNS_KEY_ID`/`APNS_BUNDLE_ID`/`APNS_PRIVATE_KEY`(.p8 PEM).
+- 콕/친구요청 전 과정에 단계별 로그(`[콕] 요청/저장/발송 시작`, `푸시 결과 result=...`)가 찍혀 진단 가능.
+
+### sandbox vs production (핵심 주의)
+알림 도착 여부는 **받는 사람 기기의 APNs 환경**에만 달려 있다(보내는 쪽 무관).
+
+| 받는 앱 설치 방식 | 토큰 환경 | `APNS_SANDBOX` |
+|---|---|---|
+| Xcode로 직접 Run | development(sandbox) | `true` |
+| TestFlight / App Store | production | `false` |
+
+- 환경이 어긋나면 `BadDeviceToken`(prod 토큰을 sandbox로) 또는 `BadEnvironmentKeyInToken`(sandbox 토큰을 prod로)이 뜨고 토큰이 폐기된다.
+- 토큰은 **로그인 상태 + 알림 권한 허용** 시 앱 실행 때 `POST /me/device-token`으로 등록된다.
+  권한 거부면 iOS가 토큰을 발급하지 않아 영영 `등록된 기기 없음`.
 
 ## Universal Links (친구추가 딥링크)
 
