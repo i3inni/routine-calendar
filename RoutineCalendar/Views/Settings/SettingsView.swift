@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var nameDraft = ""
     @State private var isSavingName = false
     @State private var showLogoutConfirm = false
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -112,6 +113,19 @@ struct SettingsView: View {
                             )
                     }
                     .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+
+                    // 계정 삭제 (3일 유예)
+                    Button {
+                        showDeleteConfirm = true
+                    } label: {
+                        Text("계정 삭제")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Color.rcText3(scheme))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                    }
+                    .padding(.horizontal, 16)
                     .padding(.bottom, 40)
                 }
             }
@@ -119,6 +133,14 @@ struct SettingsView: View {
         .confirmationDialog("로그아웃 할까요?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
             Button("로그아웃", role: .destructive) { session.logout() }
             Button("취소", role: .cancel) {}
+        }
+        .confirmationDialog("계정을 삭제할까요?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("계정 삭제", role: .destructive) {
+                Task { await session.deleteAccount() }
+            }
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("3일 이내에 다시 로그인하면 삭제가 취소돼요. 3일이 지나면 모든 데이터가 영구 삭제됩니다.")
         }
         .navigationTitle("설정")
         .navigationBarTitleDisplayMode(.large)

@@ -106,6 +106,21 @@ final class SessionStore {
         currentUser = nil
     }
 
+    // MARK: - 계정 삭제 (3일 유예, 재로그인 시 취소)
+
+    /// 계정 삭제를 예약하고 로그아웃. 성공 시 true.
+    @discardableResult
+    func deleteAccount() async -> Bool {
+        do {
+            try await APIClient.shared.deleteAccount()
+            logout()
+            return true
+        } catch {
+            loginError = error.localizedDescription
+            return false
+        }
+    }
+
     // MARK: - 닉네임 변경 (친구에게 보이는 이름)
 
     /// 서버에 닉네임을 저장하고 currentUser를 갱신. 성공 시 true.

@@ -143,6 +143,11 @@ final class APIClient: @unchecked Sendable {
         try await send("PATCH", "/me", body: ["nickname": nickname])
     }
 
+    /// 계정 삭제 예약(3일 유예). 유예 내 재로그인하면 취소됨.
+    func deleteAccount() async throws {
+        try await sendNoContent("DELETE", "/me")
+    }
+
     // MARK: 친구
 
     func friends() async throws -> [FriendDTO] {

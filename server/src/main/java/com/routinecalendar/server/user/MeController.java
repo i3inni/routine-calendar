@@ -2,9 +2,12 @@ package com.routinecalendar.server.user;
 
 import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
+import com.routinecalendar.server.user.MeDtos.DeletionResponse;
 import com.routinecalendar.server.user.MeDtos.UpdateNicknameRequest;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,5 +41,12 @@ public class MeController {
                                  @Valid @RequestBody UpdateNicknameRequest request) {
         User user = userService.updateNickname(userId, request.nickname());
         return UserResponse.from(user);
+    }
+
+    /** 계정 삭제 예약(3일 유예). 유예 내 재로그인하면 취소된다. */
+    @DeleteMapping("/me")
+    public DeletionResponse deleteMe(@AuthenticationPrincipal Long userId) {
+        Instant scheduledAt = userService.requestDeletion(userId);
+        return new DeletionResponse(scheduledAt);
     }
 }

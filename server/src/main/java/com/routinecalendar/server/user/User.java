@@ -54,6 +54,10 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** 계정 삭제 예약 시각. null이면 정상 계정. (유예 기간 후 영구 삭제) */
+    @Column(name = "deletion_requested_at")
+    private Instant deletionRequestedAt;
+
     @Builder
     public User(Long kakaoId, String appleId, String handle, String nickname, String profileImageUrl) {
         this.kakaoId = kakaoId;
@@ -71,5 +75,15 @@ public class User {
     /** 친구에게 표시되는 이름(닉네임) 변경. */
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    /** 계정 삭제 예약(유예 시작). */
+    public void requestDeletion() {
+        this.deletionRequestedAt = Instant.now();
+    }
+
+    /** 삭제 예약 취소(재로그인 시). */
+    public void cancelDeletion() {
+        this.deletionRequestedAt = null;
     }
 }
