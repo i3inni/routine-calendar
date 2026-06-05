@@ -89,6 +89,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.i3inni.routinecalendar
+        TARGETED_DEVICE_FAMILY: "1"   # iPhone 전용 (iPad 미지원)
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "DBDJ2HDBU2"
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
@@ -140,6 +141,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.i3inni.routinecalendar.widget
+        TARGETED_DEVICE_FAMILY: "1"   # iPhone 전용 (앱과 일치)
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "DBDJ2HDBU2"
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
