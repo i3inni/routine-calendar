@@ -19,26 +19,34 @@ public record JwtProperties(String secret, long accessTokenValidity, long refres
 
 같은 패턴의 클래스들:
 
+모든 `@ConfigurationProperties`는 **`config/` 패키지에 통일**돼 있다(feature-local로 흩지 않음).
+
 | 클래스 | prefix | 필드 |
 |---|---|---|
 | `JwtProperties` | `app.jwt` | secret, accessTokenValidity, refreshTokenValidity |
 | `KakaoProperties` | `app.kakao` | userInfoUri |
+| `AppleProperties` | `app.apple` | clientId (= 앱 번들ID, 애플 토큰 `aud` 검증 기준 — [06](06-auth-kakao.md)) |
 | `AuthProperties` | `app.auth` | devLoginEnabled |
-| `ApnsProperties` (push 패키지) | `app.apns` | enabled, useSandbox, teamId, keyId, bundleId, privateKey |
+| `PokeProperties` | `app.poke` | cooldownSeconds (콕 쿨다운 — [08](08-poke.md)) |
+| `ApnsProperties` | `app.apns` | enabled, useSandbox, teamId, keyId, bundleId, privateKey |
 
 이 record들은 [01](01-build-and-config.md)에서 본 `@ConfigurationPropertiesScan` 덕에 자동으로 빈 등록되어, 필요한 곳에 생성자 주입된다.
 
+> **설계 결정**: 처음엔 `PokeProperties`/`ApnsProperties`를 각 feature 패키지에 뒀지만, 패키지를 계층(controller/service/...)으로 나누면서 **설정은 도메인 계층이 아니라 인프라**라고 보고 전부 `config/`로 모았다. 모든 `@ConfigurationProperties`가 한곳에 있어 설정 추적이 쉽다.
+
 ---
 
-## `AsyncConfig.java`
+## `AsyncConfig.java` — 비동기 + 스케줄링 활성화
 
 ```java
 @Configuration
 @EnableAsync
+@EnableScheduling
 public class AsyncConfig {}
 ```
-- **`@EnableAsync`**: `@Async`가 붙은 메서드를 **별도 스레드풀에서 실행**되게 활성화. 푸시 발송([11 push](11-push-apns.md))을 요청 스레드와 분리하기 위함.
-- 이게 없으면 `@Async`는 무시되고 그냥 동기 실행된다.
+- **`@EnableAsync`**: `@Async`가 붙은 메서드를 **별도 스레드풀에서 실행**되게 활성화. 푸시 발송([11 push](11-push-apns.md))을 요청 스레드와 분리.
+- **`@EnableScheduling`**: `@Scheduled`(유예 지난 계정 영구 삭제, [05 UserPurgeScheduler](05-user.md))를 주기 실행되게 활성화.
+- 이 어노테이션들이 없으면 `@Async`/`@Scheduled`는 무시되고 동작하지 않는다.
 
 ---
 

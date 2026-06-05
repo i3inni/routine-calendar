@@ -118,16 +118,32 @@ public class ApnsClient {
 
 ```java
         if (res.statusCode() == 200) return SendResult.SUCCESS;
-        if (res.statusCode() == 410 || res.body().contains("Unregistered") || res.body().contains("BadDeviceToken")) {
-            log.info("APNs 만료 토큰 {}…: {}", preview(deviceToken), res.body());
+        if (res.statusCode() == 410
+                || res.body().contains("Unregistered")
+                || res.body().contains("BadDeviceToken")
+                || res.body().contains("BadEnvironmentKeyInToken")     // sandbox↔production 불일치
+                || res.body().contains("DeviceTokenNotForTopic")) {    // 다른 앱(번들ID)의 토큰
+            log.info("APNs 폐기 토큰 {}…: {}", preview(deviceToken), res.body());
             return SendResult.UNREGISTERED;   // → PushService가 토큰 삭제
         }
         log.warn("APNs 실패 status={} body={}", res.statusCode(), res.body());
         return SendResult.FAILED;
     } catch (Exception e) { log.warn("APNs 전송 예외", e); return SendResult.FAILED; }
 ```
-- 200=성공, 410/Unregistered/BadDeviceToken=죽은 토큰(삭제 대상), 그 외=실패.
+- 200=성공, **못 쓰는 토큰**(410/Unregistered/BadDeviceToken/BadEnvironmentKeyInToken/DeviceTokenNotForTopic)=삭제 대상, 그 외=실패.
 - **푸시 실패가 예외로 위로 전파되지 않게** catch로 흡수(비동기라 응답엔 영향 없지만 안전).
+- **자가 정리(self-cleaning)**: 죽은 토큰을 `UNREGISTERED`로 표시 → `PushService`가 DB에서 삭제 → 낡은/잘못된 토큰이 쌓이지 않음.
+
+### ⚠️ sandbox vs production — 알림 도착의 핵심
+알림 도착 여부는 **받는 기기의 APNs 환경**에만 달려 있다(보내는 쪽 무관).
+
+| 받는 앱 설치 방식 | 기기 토큰 환경 | `APNS_SANDBOX` |
+|---|---|---|
+| Xcode로 직접 Run | development(sandbox) | `true` |
+| TestFlight / App Store | production | `false` |
+
+- 환경이 어긋나면 `BadDeviceToken`(prod 토큰을 sandbox로) 또는 `BadEnvironmentKeyInToken`(sandbox 토큰을 prod로)이 뜨고 위 로직이 토큰을 폐기한다. → **서버 `APNS_SANDBOX`를 받는 기기 환경에 맞춰야** 함.
+- 토큰은 **로그인 + 알림 권한 허용** 시 앱 실행 때 `POST /me/device-token`으로 (재)등록된다.
 
 ```java
     private String baseUrl() { return props.useSandbox() ? "https://api.sandbox.push.apple.com" : "https://api.push.apple.com"; }

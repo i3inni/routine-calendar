@@ -1,11 +1,15 @@
-# 06 — auth 도메인 (카카오 로그인 + JWT)
+# 06 — auth 도메인 (카카오/애플 로그인 + JWT)
 
 > [← 05 user 도메인](05-user.md) · [목차](README.md) · 다음: [07 friend 도메인 →](07-friend.md)
 
-대상 파일: `auth/AuthDtos.java`, `KakaoUserResponse.java`, `KakaoApiClient.java`, `AuthService.java`, `AuthController.java`
+대상 파일 (`auth/`는 `controller/`·`service/`·`dto/`로 분리됨):
+`dto/AuthDtos.java`, `dto/KakaoUserResponse.java`, `service/KakaoApiClient.java`, `service/AppleTokenVerifier.java`, `service/AuthService.java`, `controller/AuthController.java`
 
-모바일 카카오 로그인은 웹의 OAuth 리다이렉트가 아니라 **토큰 교환** 방식:
-**앱이 카카오 SDK로 액세스토큰 획득 → 서버로 전송 → 서버가 카카오에 그 토큰으로 내 정보 조회(검증 겸) → 우리 JWT 발급.**
+**소셜 로그인 두 가지를 지원**하며 둘 다 모바일용 **토큰 교환** 방식이다(웹 OAuth 리다이렉트 아님).
+- **카카오**: 앱이 카카오 SDK로 액세스토큰 획득 → 서버가 카카오 API로 내 정보 조회(검증 겸) → 우리 JWT 발급.
+- **애플**: 앱이 받은 신원토큰(JWT) → 서버가 **애플 공개키(JWKS)로 직접 서명 검증** → 우리 JWT 발급.
+
+> 신원은 `kakao_id`(양수) 또는 `apple_id`(문자열 sub) 중 하나로 식별. 카카오/애플 유저가 공존한다.
 
 ---
 
@@ -83,9 +87,52 @@ public class KakaoApiClient {
 
 ---
 
+## `AppleTokenVerifier.java` — 애플 신원토큰 검증 ⭐
+
+애플 로그인은 카카오와 달리 **외부 API 호출 없이 서버가 직접 JWT를 검증**한다. 애플이 발급한 신원토큰(identity token)은
+애플의 비밀키로 서명된 JWT라, 애플의 **공개키(JWKS)** 로 서명을 확인하면 위조 여부를 알 수 있다.
+
+```java
+public String verifyAndGetSub(String identityToken) {
+    Claims claims = Jwts.parser()
+            .keyLocator(header -> resolveKey((String) header.get("kid")))  // kid로 맞는 공개키 선택
+            .build()
+            .parseSignedClaims(identityToken)
+            .getPayload();
+    if (!ISSUER.equals(claims.getIssuer())) throw ...;                      // iss == appleid.apple.com
+    if (!claims.getAudience().contains(props.clientId())) throw ...;        // aud == 앱 번들ID
+    return claims.getSubject();                                             // sub = 안정적 사용자 식별자
+}
+```
+- **검증 4종**: ① 서명(공개키) ② `iss`(애플) ③ `aud`(우리 앱 번들ID=`app.apple.client-id`) ④ 만료(jjwt가 자동). 모두 통과해야 `sub` 반환.
+- **`sub`**: 애플이 (우리 앱, 같은 사용자)에 대해 항상 같은 값을 주는 식별자 → `apple_id`로 저장.
+- 이름/이메일은 애플이 **최초 로그인 때만** 주므로, 그때 앱이 보낸 이름을 저장한다(이후엔 없음).
+
+### JWKS 처리 + 캐시 (동시성)
+```java
+private PublicKey resolveKey(String kid) {
+    PublicKey key = keyCache.get(kid);
+    if (key == null || keyCacheAt.isBefore(Instant.now().minus(KEY_TTL))) {  // 미스/만료 시 갱신
+        refreshKeys();
+        key = keyCache.get(kid);
+    }
+    return key;
+}
+private synchronized void refreshKeys() {                 // 동시 갱신 직렬화
+    // GET https://appleid.apple.com/auth/keys → keys[] (각 kid, n, e)
+    // n(modulus)/e(exponent) → BigInteger → RSAPublicKey 직접 구성(외부 라이브러리 없이)
+    keyCache = map;  keyCacheAt = Instant.now();
+}
+```
+- **왜 JWKS?**: 애플은 서명 키를 **회전(rotation)** 한다. 토큰 헤더의 `kid`로 맞는 키를 골라야 하므로, 키 목록을 받아 캐시.
+- **동시성**: `private volatile Map<String, PublicKey> keyCache`. 여러 요청 스레드가 **읽으므로 `volatile`로 가시성** 보장. 갱신(`refreshKeys`)은 `synchronized`로 한 번만(중복 네트워크 호출 방지). TTL(6h) + kid 미스 시 갱신.
+- **RSA 키 직접 구성**: JWK의 `n`(modulus), `e`(exponent)를 Base64url 디코드 → `BigInteger` → `RSAPublicKey`. 별도 JWK 라이브러리 없이 표준 JDK만으로.
+
+---
+
 ## `AuthService.java` — 로그인/갱신 핵심 로직
 
-생성자 주입: `KakaoApiClient`, `UserService`, `UserRepository`, `JwtTokenProvider`, `AuthProperties`.
+생성자 주입: `KakaoApiClient`, **`AppleTokenVerifier`**, `UserService`, `UserRepository`, `JwtTokenProvider`, `AuthProperties`.
 
 ### (1) 카카오 로그인
 ```java
@@ -97,6 +144,17 @@ public class KakaoApiClient {
 ```
 - 흐름: 카카오로 사용자 확인 → 우리 DB에 조회/생성([05 UserService](05-user.md)) → 우리 JWT 발급. 세 단계가 명확.
 - 이 메서드엔 `@Transactional`이 없지만 `getOrCreateByKakao`에 걸려 있어 가입 저장은 트랜잭션 보장.
+
+### (1-b) 애플 로그인
+```java
+    public AuthResponse appleLogin(AppleLoginRequest request) {
+        String appleSub = appleTokenVerifier.verifyAndGetSub(request.identityToken());
+        User user = userService.getOrCreateByApple(appleSub, request.name());
+        return issueTokens(user);
+    }
+```
+- 흐름이 카카오와 대칭: **검증(JWKS) → 조회/생성 → JWT 발급**. 검증만 외부 호출 없이 자체 처리란 점이 다름.
+- `getOrCreateByApple(sub, name)`: `apple_id`로 조회, 없으면 생성. 이름은 최초 1회만 들어오므로 그때 저장([05](05-user.md)).
 
 ### (2) 자동 로그인 / 토큰 갱신 (refresh rotation)
 ```java
@@ -155,6 +213,8 @@ public class KakaoApiClient {
 public class AuthController {
     @PostMapping("/kakao")
     public AuthResponse kakaoLogin(@Valid @RequestBody KakaoLoginRequest request) { return authService.kakaoLogin(request); }
+    @PostMapping("/apple")
+    public AuthResponse appleLogin(@Valid @RequestBody AppleLoginRequest request) { return authService.appleLogin(request); }
     @PostMapping("/refresh")
     public AuthResponse refresh(@Valid @RequestBody RefreshRequest request) { return authService.refresh(request); }
     @PostMapping("/dev-login")
@@ -172,9 +232,13 @@ public class AuthController {
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| POST | `/auth/kakao` | `{ kakaoAccessToken }` → 로그인, 토큰 발급 |
+| POST | `/auth/kakao` | `{ kakaoAccessToken }` → 카카오 검증 후 로그인 |
+| POST | `/auth/apple` | `{ identityToken, name? }` → 애플 JWKS 검증 후 로그인 |
 | POST | `/auth/refresh` | `{ refreshToken }` → 자동 로그인(토큰 회전) |
 | POST | `/auth/dev-login` | 카카오 없이 로그인(개발용) |
+
+> **AuthDtos에 추가**: `AppleLoginRequest(@NotBlank String identityToken, String name)`.
+> **AppleProperties**(`app.apple.client-id` = 앱 번들ID)는 [02 설정 레이어](02-config-layer.md) 참고.
 
 ---
 

@@ -66,7 +66,7 @@ com.routinecalendar.server
 
 ## 설계에서 신경 쓴 점
 
-엔지니어링 의사결정과 그 근거를 정리했습니다. 자세한 구현·개념 설명은 **[server/FEATURES.md](server/FEATURES.md)** 참고.
+엔지니어링 의사결정과 그 근거를 정리했습니다. 자세한 구현·개념·동시성 처리는 **[server/docs/](server/docs/README.md)** 정독 가이드 참고.
 
 - **Stateless JWT 인증** — 서버에 세션을 두지 않아 수평 확장에 유리. access(짧게)/refresh(길게) 분리 + `type` 클레임으로 혼용 차단, refresh 회전.
 - **애플 신원토큰 검증** — 애플 JWKS(공개키)를 받아 서명·`iss`·`aud`·만료를 직접 검증. 공개키는 캐시(`volatile`)로 재사용.
@@ -104,8 +104,7 @@ curl localhost:8080/api/ping
 | 문서 | 내용 |
 |---|---|
 | **[server/README.md](server/README.md)** | 백엔드 실행·배포·API·스키마 레퍼런스 |
-| **[server/FEATURES.md](server/FEATURES.md)** | 기능별 구현·어노테이션·동시성 처리 상세 (공부/리뷰용) |
-| **[server/docs/](server/docs/README.md)** | 코드 한 줄씩 정독 가이드 |
+| **[server/docs/](server/docs/README.md)** | 기능별 구현·어노테이션·동시성 처리 + 코드 한 줄씩 정독 가이드 |
 
 ---
 

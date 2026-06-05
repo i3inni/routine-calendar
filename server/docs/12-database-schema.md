@@ -2,7 +2,7 @@
 
 > [← 11 push 도메인](11-push-apns.md) · [목차](README.md) · 다음: [13 테스트 →](13-testing.md)
 
-대상 파일: `src/main/resources/db/migration/V1__init.sql`
+대상 파일: `db/migration/V1__init.sql`, `V2__add_apple_login.sql`, `V3__add_account_deletion.sql`
 
 ---
 
@@ -111,6 +111,29 @@ CREATE TABLE device_tokens (
 CREATE INDEX idx_device_user ON device_tokens (user_id);
 ```
 - `token UNIQUE`: upsert 근거([10 device](10-device.md)). `idx_device_user`: 유저의 기기 목록 조회(푸시 발송) 가속.
+
+---
+
+## 이후 마이그레이션 (스키마 진화)
+
+기존 `V1`은 **수정 금지**. 변경은 새 버전 파일로 누적한다.
+
+### `V2__add_apple_login.sql` — 애플 로그인 지원
+```sql
+ALTER TABLE users ALTER COLUMN kakao_id DROP NOT NULL;      -- 애플 전용 유저는 kakao_id 없음
+ALTER TABLE users ADD COLUMN apple_id VARCHAR(255) UNIQUE;  -- 애플 sub
+```
+- 신원 제공자가 카카오 **또는** 애플 → `kakao_id`를 선택(nullable)으로 완화하고 `apple_id` 추가.
+- **UNIQUE + NULL 허용**: Postgres는 NULL을 유니크 위반으로 안 봄 → 카카오 전용 유저(apple_id=NULL)가 여럿이어도 OK.
+
+### `V3__add_account_deletion.sql` — 계정 삭제 유예
+```sql
+ALTER TABLE users ADD COLUMN deletion_requested_at TIMESTAMPTZ;       -- NULL = 정상 계정
+CREATE INDEX idx_users_deletion_requested ON users (deletion_requested_at);
+```
+- 삭제 예약 시각 기록(soft delete). 인덱스는 스케줄러의 "유예 지난 계정" 조회(`findByDeletionRequestedAtBefore`)용. ([05 계정삭제](05-user.md))
+
+> 스키마 변경을 코드(엔티티)와 함께 **버전으로 남기니**, 어느 시점의 DB든 재현 가능. JPA는 `validate`라 V2/V3 적용 후 엔티티(`appleId`, `deletionRequestedAt`)와 일치해야 부팅됨.
 
 ---
 

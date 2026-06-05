@@ -168,6 +168,59 @@ public class MeController {
 - **`@AuthenticationPrincipal Long userId`**: 필터([03](03-security-jwt.md))가 SecurityContext에 넣어둔 principal(userId)을 파라미터로 바로 주입 → 컨트롤러가 토큰을 직접 파싱할 필요 없음.
 - 흐름: userId로 조회 → 없으면 USER_NOT_FOUND(글로벌 핸들러가 404) → 있으면 DTO 변환 후 반환(200).
 
+### 닉네임 변경 — `PATCH /me`
+```java
+@PatchMapping("/me")
+public UserResponse updateMe(@AuthenticationPrincipal Long userId,
+                             @Valid @RequestBody UpdateNicknameRequest request) {
+    User user = userService.updateNickname(userId, request.nickname());
+    return UserResponse.from(user);
+}
+```
+- 친구에게 보이는 이름(`nickname`)을 바꾼다. `UpdateNicknameRequest(@NotBlank @Size(max=50) String nickname)`.
+- `UserService.updateNickname`은 엔티티의 `updateNickname()`만 호출 → **dirty checking으로 UPDATE**(`save()` 불필요).
+
+### 계정 삭제(3일 유예) — `DELETE /me` ⭐
+App Store는 **로그인(계정 생성)이 있으면 앱 안에서 계정 삭제도 제공**하라고 요구한다(Guideline 5.1.1). 즉시 삭제 대신 **유예(soft delete)** 패턴.
+```java
+@DeleteMapping("/me")
+public DeletionResponse deleteMe(@AuthenticationPrincipal Long userId) {
+    Instant scheduledAt = userService.requestDeletion(userId);   // deletion_requested_at = now
+    return new DeletionResponse(scheduledAt);                     // 유예 종료(영구삭제 예정) 시각
+}
+```
+동작 3단계:
+1. **요청**: `requestDeletion`이 `deletion_requested_at`만 기록(실제 삭제 X) → 앱은 로그아웃.
+2. **취소**: 유예 내 재로그인하면 `getOrCreateBy*`가 `reactivateIfPending`으로 그 값을 비워 **자동 취소**.
+   ```java
+   private User reactivateIfPending(User user) {
+       if (user.getDeletionRequestedAt() != null) user.cancelDeletion();   // dirty checking
+       return user;
+   }
+   ```
+3. **영구 삭제**: 유예(3일) 지나면 스케줄러가 일괄 삭제(아래).
+
+### 영구 삭제 스케줄러 — `UserPurgeScheduler`
+```java
+@Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")   // 매일 04시 KST
+@Transactional
+public void purgeExpiredAccounts() {
+    Instant cutoff = Instant.now().minus(UserService.DELETION_GRACE);   // 3일
+    List<User> expired = userRepository.findByDeletionRequestedAtBefore(cutoff);
+    userRepository.deleteAll(expired);   // 친구/요약/콕/토큰은 DB ON DELETE CASCADE로 함께 삭제
+}
+```
+- **`@Scheduled`**(+ `@EnableScheduling`, [02](02-config-layer.md)): 주기 실행. `cron` 6필드(초 분 시 일 월 요일) + `zone`.
+- **CASCADE 활용**: users 한 행 삭제로 연관 데이터 전부 정리([12 스키마](12-database-schema.md)의 `ON DELETE CASCADE`). 별도 삭제 코드 불필요.
+- **동시성/안전**: `@Transactional`로 일괄 삭제. soft delete라 유예 중 실수 복구 가능.
+
+### 내 정보 엔드포인트 요약
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/me` | 내 정보 |
+| PATCH | `/me` | `{ nickname }` 닉네임 변경 |
+| DELETE | `/me` | 계정 삭제 예약(3일 유예, 재로그인 취소) |
+
 ---
 
 > 다음: [06 auth 카카오 로그인 →](06-auth-kakao.md)

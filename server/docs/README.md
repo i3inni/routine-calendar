@@ -14,33 +14,34 @@
 5. [04 — 글로벌 예외 처리 (common/)](04-error-handling.md) · ErrorCode, BusinessException, RestControllerAdvice
 
 ### 도메인 (기능별)
-6. [05 — user 도메인](05-user.md) · 엔티티, 레포지토리, handle 발급
-7. [06 — auth 도메인 (카카오 로그인)](06-auth-kakao.md) · 토큰 교환, 자동 로그인
+6. [05 — user 도메인](05-user.md) · 엔티티, handle 발급, **닉네임 변경, 계정 삭제(유예)**
+7. [06 — auth 도메인 (카카오/애플 로그인)](06-auth-kakao.md) · 토큰 교환, **애플 JWKS 검증**, 자동 로그인
 8. [07 — friend 도메인](07-friend.md) · 요청/수락/목록/끊기, N+1 방지
-9. [08 — poke 도메인](08-poke.md) · 쿨다운, 도메인 이벤트
+9. [08 — poke 도메인](08-poke.md) · **설정 가능한 쿨다운**, 도메인 이벤트
 10. [09 — summary 도메인](09-summary.md) · JSONB, upsert
 11. [10 — device 도메인](10-device.md) · 토큰 등록(upsert/reassign)
-12. [11 — push 도메인 (APNs)](11-push-apns.md) · 이벤트 + AFTER_COMMIT + @Async
+12. [11 — push 도메인 (APNs)](11-push-apns.md) · 이벤트 + AFTER_COMMIT + @Async, **토큰 자가정리, sandbox/prod**
 
 ### 데이터 & 검증
-13. [12 — DB 스키마 (Flyway)](12-database-schema.md) · 제약, 인덱스, 부분 유니크 인덱스
+13. [12 — DB 스키마 (Flyway)](12-database-schema.md) · 제약, 인덱스, **V2/V3 마이그레이션**
 14. [13 — 테스트](13-testing.md)
 
-### 종합
-15. [14 — 요청 1건의 전체 흐름 + 면접 셀프체크](14-request-lifecycle.md)
+### 종합 & 운영
+15. [14 — 요청 1건의 전체 흐름 + 동시성 총정리 + 셀프체크](14-request-lifecycle.md)
+16. [15 — web 공개 엔드포인트 & 출시 준비](15-web-public-endpoints.md) · `/config`, AASA(Universal Links), `/privacy`, `/support`
 
-## 패키지 구조 (package-by-feature)
+## 패키지 구조 (package-by-feature + 계층 분리)
+각 도메인을 `controller / service / repository / domain / dto`로 분리. (엔티티·enum·이벤트 → `domain/`)
 ```
-config/        SecurityConfig, AsyncConfig, Jwt/Kakao/AuthProperties
-security/      JwtTokenProvider, JwtAuthenticationFilter
-common/error/  ErrorCode, BusinessException, ErrorResponse, GlobalExceptionHandler
-common/        AppTime
-auth/          AuthController/Service, KakaoApiClient, KakaoUserResponse, AuthDtos
-user/          User, UserService, MeController, Repository, UserResponse
-friend/        Friendship, FriendRequest(+Status), Service, Controller, Repository, Dtos, Event
-poke/          Poke, PokeService, Controller, Repository, PokeEvent
-summary/       DailySummary, Service, Controller, Repository, Dtos
-device/        DeviceToken(+Platform), Service, Controller, Repository, Dtos
-push/          ApnsClient, PushService, PushEventListener, ApnsProperties
-web/           HealthController
+auth/      controller · service(KakaoApiClient, AppleTokenVerifier) · dto
+user/      controller · service(+UserPurgeScheduler) · repository · domain · dto
+friend/    controller · service · repository · domain(Friendship, FriendRequest(+Status), Event) · dto
+poke/      controller · service · repository · domain(Poke, PokeEvent)
+summary/   controller · service · repository · domain · dto
+device/    controller · service · repository · domain(DeviceToken, Platform) · dto
+push/      service(ApnsClient, PushService, PushEventListener)
+security/  JwtTokenProvider, JwtAuthenticationFilter
+config/    SecurityConfig, AsyncConfig, *Properties(Jwt/Kakao/Auth/Apple/Poke/Apns 통일)
+common/    error(ErrorCode, BusinessException, GlobalExceptionHandler), AppTime
+web/       HealthController, ConfigController, WellKnownController(AASA), Privacy/SupportController
 ```

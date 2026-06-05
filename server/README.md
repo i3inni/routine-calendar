@@ -83,8 +83,7 @@ common/    error(ErrorCode, BusinessException, GlobalExceptionHandler), AppTime
 web/       HealthController, ConfigController, WellKnown(AASA), Privacy/SupportController
 ```
 
-> - 기능별 구현·어노테이션·동시성 처리 상세: [`FEATURES.md`](FEATURES.md)
-> - 코드 한 줄씩 정독: [`docs/`](docs/README.md)
+> 기능별 구현·어노테이션·동시성 처리 + 코드 한 줄씩 정독: [`docs/`](docs/README.md)
 
 ## 인증 (Kakao / Apple 로그인 + JWT)
 

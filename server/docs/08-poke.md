@@ -40,9 +40,15 @@ public class Poke {
 ```java
 @Service
 public class PokeService {
-    private static final Duration COOLDOWN = Duration.ofHours(1);
+    private final Duration cooldown;   // 설정값에서 주입
+
+    public PokeService(..., PokeProperties pokeProperties) {
+        ...
+        this.cooldown = Duration.ofSeconds(pokeProperties.cooldownSeconds());
+    }
 ```
-- `Duration.ofHours(1)`: 시간 간격을 타입으로 안전하게 표현(매직넘버 대신).
+- **쿨다운을 설정값으로** (`app.poke.cooldown-seconds`, env `POKE_COOLDOWN_SECONDS`, 기본 3600). 하드코딩 대신 `PokeProperties`([02](02-config-layer.md), `config/`)를 생성자에서 받아 `Duration`으로 변환해 보관.
+- **왜?**: 테스트할 땐 5초로, 운영은 1시간으로 — **코드 수정/재빌드 없이 환경변수만** 바꿔 조절. (운영 기본값은 길게, 디버깅은 짧게)
 
 ```java
     @Transactional
@@ -54,7 +60,7 @@ public class PokeService {
 
         pokeRepository.findTopByFromUserAndToUserOrderByCreatedAtDesc(me, to)
                 .ifPresent(last -> {
-                    if (last.getCreatedAt().isAfter(Instant.now().minus(COOLDOWN)))
+                    if (last.getCreatedAt().isAfter(Instant.now().minus(cooldown)))
                         throw new BusinessException(ErrorCode.POKE_COOLDOWN);
                 });
 

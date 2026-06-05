@@ -95,4 +95,27 @@
 
 ---
 
-축하한다. 여기까지 읽었으면 `server/`의 모든 코드를 줄 단위로 이해한 것이다. 처음으로 돌아가 [목차](README.md)에서 약한 부분을 다시 보자.
+## 동시성 처리 총정리
+
+이 프로젝트에서 **동시성·스레드 안전**을 다룬 지점들. (면접에서 "동시성 고려한 게 있나요?"에 답할 거리)
+
+| 기법 | 위치 | 목적 |
+|---|---|---|
+| **`@Async` + 스레드풀** | `PushEventListener` ([11](11-push-apns.md)) | 푸시 발송을 요청 스레드와 분리(응답성) |
+| **`@TransactionalEventListener(AFTER_COMMIT)`** | 푸시 발행 ([08](08-poke.md)/[07](07-friend.md)) | 커밋된 트랜잭션에 대해서만 후처리(정합성) |
+| **`@Transactional`** | 모든 서비스 쓰기 | 원자성 + 런타임 예외 시 롤백. dirty checking으로 상태변경=UPDATE |
+| **`@Transactional(readOnly=true)`** | 조회 ([07](07-friend.md)) | 스냅샷 생략 성능↑, 쓰기 방지 |
+| **`volatile` 캐시** | `ApnsClient`(프로바이더 JWT/키), `AppleTokenVerifier`(JWKS [06](06-auth-kakao.md)) | 여러 스레드 간 캐시 **가시성** 보장 |
+| **`synchronized`** | 위 캐시 갱신 메서드 | 동시 갱신 직렬화(중복 네트워크/서명 방지) |
+| **`@Scheduled`** | `UserPurgeScheduler` ([05](05-user.md)) | 백그라운드 주기 작업(유예 만료 삭제) |
+| **DB 유니크/부분 인덱스** | friendships, friend_requests, device_tokens ([12](12-database-schema.md)) | 동시 요청에도 **중복 방지를 DB가 최종 보장** |
+| **멱등 설계** | 친구 끊기, 토큰 upsert, 계정삭제 | 재시도/중복 호출에 안전 |
+
+### 핵심 시나리오로 설명한다면
+- **푸시를 왜 이벤트+AFTER_COMMIT+@Async로?** → 커밋된 사실만 알림(정합성) · 요청 응답 안 막음(응답성) · 본 트랜잭션과 격리(안정성). 셋을 한 번에.
+- **JWKS/프로바이더 토큰 캐시의 동시성은?** → 다중 요청 스레드가 읽으니 `volatile`로 가시성, 갱신은 `synchronized`로 한 번만.
+- **동시에 같은 친구요청이 두 번 오면?** → 앱 로직 + **부분 유니크 인덱스(활성 PENDING 1건)** 로 DB가 최종 차단.
+
+---
+
+축하한다. 여기까지 읽었으면 `server/`의 거의 모든 코드를 줄 단위로 이해한 것이다. 마지막으로 [15 — web 공개 엔드포인트 & 출시 준비](15-web-public-endpoints.md)까지 보면 출시 관점도 마무리된다. 약한 부분은 [목차](README.md)에서 다시.
