@@ -1,6 +1,6 @@
 package com.routinecalendar.server.web;
 
-import com.routinecalendar.server.poke.PokeProperties;
+import com.routinecalendar.server.config.PokeProperties;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
