@@ -139,6 +139,11 @@ final class APIClient: @unchecked Sendable {
         try await sendNoContent("DELETE", "/me")
     }
 
+    /// 피드백/기능 요청 작성.
+    func submitFeedback(_ content: String) async throws {
+        try await sendNoContent("POST", "/feedback", body: ["content": content])
+    }
+
     // MARK: 친구
 
     func friends() async throws -> [FriendDTO] {

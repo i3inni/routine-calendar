@@ -88,6 +88,25 @@ struct SettingsView: View {
                         }
                     }
 
+                    // 피드백
+                    SectionLabel("의견 보내기")
+                    SettingsCard(scheme: scheme) {
+                        NavigationLink {
+                            FeedbackView()
+                        } label: {
+                            HStack {
+                                Text("피드백·기능 제안")
+                                    .font(.rcBody)
+                                    .foregroundStyle(Color.rcText(scheme))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Color.rcText3(scheme))
+                            }
+                            .padding()
+                        }
+                    }
+
                     // Footer
                     Text("설정과 루틴 기록은 이 기기에 저장되고,\n친구/알림은 로그인 계정으로 연결됩니다.")
                         .font(.system(size: 12.5))

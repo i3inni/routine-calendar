@@ -24,6 +24,7 @@
 		40A324C36F5C164874052EAE /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4688729240E588B93F236B99 /* Keychain.swift */; };
 		436FBDA3F66EAD14D055834B /* RCToggleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F820676E671EA5C7670907C5 /* RCToggleStyle.swift */; };
 		49FCF5D0EB14F5B284A45CAC /* MiniWeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25A41AD0B33F5A832128F8F8 /* MiniWeekView.swift */; };
+		4B5679D99A7ABC83F6C902D2 /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B428FB56ED570937D786C4 /* FeedbackView.swift */; };
 		4BBB5FE2FC0E45558F1ED276 /* RoutineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AFB653C5C9C4E9D7B52073 /* RoutineWidget.swift */; };
 		4C3BC62335C3C4A44D791214 /* notif_icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 6A3A0C762E2DEEBA73E15823 /* notif_icon.png */; };
 		51C934DAFD86C7463E0407EB /* KakaoSDKCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 68E9E2919BC396D8098E4983 /* KakaoSDKCommon */; };
@@ -139,6 +140,7 @@
 		C958DA8360C02BF3BF24BD0A /* WeekdayHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekdayHeaderView.swift; sourceTree = "<group>"; };
 		CF2CC757FC31F3C514DB46CD /* CompletionControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionControlView.swift; sourceTree = "<group>"; };
 		D02EB228E70C09CFD62FC72C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D8B428FB56ED570937D786C4 /* FeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackView.swift; sourceTree = "<group>"; };
 		E9DCC3DEA904A39188C6C101 /* MonthHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthHeaderView.swift; sourceTree = "<group>"; };
 		EA37300015DED827ECD61583 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		ECB3A183527D0F0488E2F77F /* RingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingView.swift; sourceTree = "<group>"; };
@@ -147,7 +149,7 @@
 		FB137ABA521BF30642477F91 /* FriendCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendCardView.swift; sourceTree = "<group>"; };
 		FC851842E194A0A9A50B9204 /* Friend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Friend.swift; sourceTree = "<group>"; };
 		FEEAA2BD26186173E0CB0D93 /* LockScreenCircularView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenCircularView.swift; sourceTree = "<group>"; };
-		"TEMP_B2F96BA2-6188-4B2E-98CC-4EA255E64430" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		"TEMP_D9F18657-C97F-4081-BD1F-CBD0380A743B" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -327,6 +329,7 @@
 		C2C904AE955A677C1707CCF7 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				D8B428FB56ED570937D786C4 /* FeedbackView.swift */,
 				15E6C98BEBBD764390558F85 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -368,10 +371,10 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		"TEMP_565375E8-7CD0-48F5-A1AD-EEF210D0DC21" /* routine_calendar */ = {
+		"TEMP_F543626C-1B30-4F7A-A1D9-24383499FB14" /* routine_calendar */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_B2F96BA2-6188-4B2E-98CC-4EA255E64430" /* Config.xcconfig */,
+				"TEMP_D9F18657-C97F-4081-BD1F-CBD0380A743B" /* Config.xcconfig */,
 			);
 			path = routine_calendar;
 			sourceTree = "<group>";
@@ -504,6 +507,7 @@
 				DEB7E38BFE32DE771A6B62FE /* DeepLinkRouter.swift in Sources */,
 				6B057174E2DE88ADC0DDF31F /* DesignTokens.swift in Sources */,
 				F75DDA639C10FF1362202F6C /* DeviceTokenCenter.swift in Sources */,
+				4B5679D99A7ABC83F6C902D2 /* FeedbackView.swift in Sources */,
 				8B4BE0CE1ED1350A41F29DA6 /* Friend.swift in Sources */,
 				3760BD9E08211B6CB4D77402 /* FriendCardView.swift in Sources */,
 				2B22895E06D76A6584B4710F /* FriendRequest.swift in Sources */,
@@ -563,7 +567,7 @@
 /* Begin XCBuildConfiguration section */
 		3F09F7C32DBB6293A97C2157 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_B2F96BA2-6188-4B2E-98CC-4EA255E64430" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_D9F18657-C97F-4081-BD1F-CBD0380A743B" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -760,7 +764,7 @@
 		};
 		F031B3C7DACB7E10FF27FFEB /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_B2F96BA2-6188-4B2E-98CC-4EA255E64430" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_D9F18657-C97F-4081-BD1F-CBD0380A743B" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
