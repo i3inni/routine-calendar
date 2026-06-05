@@ -38,6 +38,11 @@ app:
   auth:
     # 카카오 없이 JWT를 발급받는 개발용 로그인. 운영(prod)에선 반드시 false.
     dev-login-enabled: ${DEV_LOGIN_ENABLED:true}
+  admin:
+    # 관리자 피드백 페이지(/admin/feedback?key=) 접근 키.
+    # 코드엔 기본값을 두지 않는다(노출 방지) → 반드시 환경변수 ADMIN_KEY로 주입.
+    # 미설정 시 관리자 페이지는 항상 잠김.
+    key: ${ADMIN_KEY:}
   apns:
     # 키가 준비되기 전엔 false → 실제 발송 대신 로그만 남긴다.
     enabled: ${APNS_ENABLED:false}

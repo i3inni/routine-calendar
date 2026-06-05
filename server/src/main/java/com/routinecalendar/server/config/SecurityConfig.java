@@ -38,6 +38,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**", "/api/ping", "/actuator/health").permitAll()
                         // Universal Links: AASA 파일 + 친구추가 폴백 페이지 + 개인정보/지원 페이지는 공개
                         .requestMatchers("/.well-known/**", "/add-friend", "/privacy", "/support").permitAll()
+                        // 관리자 페이지는 ?key= 로 자체 보호(스프링 인증 대신)
+                        .requestMatchers("/admin/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 인증 실패 시 302 리다이렉트 대신 깔끔하게 401
