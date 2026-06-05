@@ -130,15 +130,15 @@ struct SettingsView: View {
                 }
             }
         }
-        .confirmationDialog("로그아웃 할까요?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
-            Button("로그아웃", role: .destructive) { session.logout() }
+        .alert("로그아웃 할까요?", isPresented: $showLogoutConfirm) {
             Button("취소", role: .cancel) {}
+            Button("로그아웃", role: .destructive) { session.logout() }
         }
-        .confirmationDialog("계정을 삭제할까요?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+        .alert("계정을 삭제할까요?", isPresented: $showDeleteConfirm) {
+            Button("취소", role: .cancel) {}
             Button("계정 삭제", role: .destructive) {
                 Task { await session.deleteAccount() }
             }
-            Button("취소", role: .cancel) {}
         } message: {
             Text("3일 이내에 다시 로그인하면 삭제가 취소돼요. 3일이 지나면 모든 데이터가 영구 삭제됩니다.")
         }
