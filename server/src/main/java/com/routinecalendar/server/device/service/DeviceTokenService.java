@@ -7,9 +7,11 @@ import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
 import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class DeviceTokenService {
 
@@ -28,10 +30,17 @@ public class DeviceTokenService {
         User me = userRepository.findById(meId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         Platform p = platform != null ? platform : Platform.IOS;
+        String preview = token.length() <= 8 ? token : token.substring(0, 8);
 
         deviceTokenRepository.findByToken(token).ifPresentOrElse(
-                existing -> existing.reassign(me, p),
-                () -> deviceTokenRepository.save(new DeviceToken(me, token, p))
+                existing -> {
+                    existing.reassign(me, p);
+                    log.info("[기기토큰] 갱신 userId={} token={}… platform={}", meId, preview, p);
+                },
+                () -> {
+                    deviceTokenRepository.save(new DeviceToken(me, token, p));
+                    log.info("[기기토큰] 신규 등록 userId={} token={}… platform={}", meId, preview, p);
+                }
         );
     }
 }

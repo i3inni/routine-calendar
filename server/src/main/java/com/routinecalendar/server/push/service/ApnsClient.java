@@ -54,6 +54,8 @@ public class ApnsClient {
             return SendResult.SUCCESS;
         }
         try {
+            String env = props.useSandbox() ? "sandbox" : "production";
+            log.info("[APNs] 발송 시도 env={} topic={} token={}…", env, props.bundleId(), preview(deviceToken));
             String payload = objectMapper.writeValueAsString(Map.of(
                     "aps", Map.of(
                             "alert", Map.of("title", title, "body", body),
@@ -71,6 +73,7 @@ public class ApnsClient {
 
             HttpResponse<String> res = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (res.statusCode() == 200) {
+                log.info("[APNs] 발송 성공(200) env={} token={}…", env, preview(deviceToken));
                 return SendResult.SUCCESS;
             }
             // 토큰을 더 못 쓰는 경우(만료/잘못/환경불일치) → 폐기 대상
