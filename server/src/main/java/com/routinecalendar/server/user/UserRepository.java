@@ -7,6 +7,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByKakaoId(Long kakaoId);
 
+    Optional<User> findByAppleId(String appleId);
+
     Optional<User> findByHandle(String handle);
 
     boolean existsByHandle(String handle);

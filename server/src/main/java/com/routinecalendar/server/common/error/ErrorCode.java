@@ -17,6 +17,7 @@ public enum ErrorCode {
     // 인증
     INVALID_KAKAO_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_1", "유효하지 않은 카카오 토큰입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_2", "유효하지 않은 refresh 토큰입니다. 다시 로그인해 주세요."),
+    INVALID_APPLE_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_3", "유효하지 않은 애플 토큰입니다."),
     DEV_LOGIN_DISABLED(HttpStatus.FORBIDDEN, "AUTH_403_1", "개발용 로그인이 비활성화되어 있습니다."),
 
     // 사용자

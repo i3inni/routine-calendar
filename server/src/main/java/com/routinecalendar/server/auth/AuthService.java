@@ -1,5 +1,6 @@
 package com.routinecalendar.server.auth;
 
+import com.routinecalendar.server.auth.AuthDtos.AppleLoginRequest;
 import com.routinecalendar.server.auth.AuthDtos.AuthResponse;
 import com.routinecalendar.server.auth.AuthDtos.DevLoginRequest;
 import com.routinecalendar.server.auth.AuthDtos.KakaoLoginRequest;
@@ -20,17 +21,20 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final KakaoApiClient kakaoApiClient;
+    private final AppleTokenVerifier appleTokenVerifier;
     private final UserService userService;
     private final UserRepository userRepository;
     private final JwtTokenProvider tokenProvider;
     private final AuthProperties authProperties;
 
     public AuthService(KakaoApiClient kakaoApiClient,
+                       AppleTokenVerifier appleTokenVerifier,
                        UserService userService,
                        UserRepository userRepository,
                        JwtTokenProvider tokenProvider,
                        AuthProperties authProperties) {
         this.kakaoApiClient = kakaoApiClient;
+        this.appleTokenVerifier = appleTokenVerifier;
         this.userService = userService;
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
@@ -42,6 +46,13 @@ public class AuthService {
         KakaoUserResponse kakaoUser = kakaoApiClient.fetchUser(request.kakaoAccessToken());
         User user = userService.getOrCreateByKakao(
                 kakaoUser.id(), kakaoUser.nickname(), kakaoUser.profileImageUrl());
+        return issueTokens(user);
+    }
+
+    /** 애플 신원토큰 검증 → 회원 조회/생성 → 우리 JWT 발급 */
+    public AuthResponse appleLogin(AppleLoginRequest request) {
+        String appleSub = appleTokenVerifier.verifyAndGetSub(request.identityToken());
+        User user = userService.getOrCreateByApple(appleSub, request.name());
         return issueTokens(user);
     }
 

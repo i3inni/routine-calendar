@@ -13,6 +13,10 @@ public final class AuthDtos {
     public record KakaoLoginRequest(@NotBlank String kakaoAccessToken) {
     }
 
+    /** 애플 로그인: 앱이 받은 신원토큰(JWT). 이름은 최초 로그인 때만 들어온다. */
+    public record AppleLoginRequest(@NotBlank String identityToken, String name) {
+    }
+
     /** 자동 로그인/토큰 갱신: 저장해 둔 refresh 토큰을 보낸다. */
     public record RefreshRequest(@NotBlank String refreshToken) {
     }

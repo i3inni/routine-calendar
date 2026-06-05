@@ -32,6 +32,17 @@ public class UserService {
                         .build()));
     }
 
+    /** 애플 sub로 기존 사용자를 찾고, 없으면 새로 만든다. (이름은 최초 로그인 때만 제공됨) */
+    @Transactional
+    public User getOrCreateByApple(String appleId, String nickname) {
+        return userRepository.findByAppleId(appleId)
+                .orElseGet(() -> userRepository.save(User.builder()
+                        .appleId(appleId)
+                        .handle(generateUniqueHandle())
+                        .nickname(nickname != null && !nickname.isBlank() ? nickname : "사용자")
+                        .build()));
+    }
+
     /** 닉네임(친구에게 보이는 이름) 변경. */
     @Transactional
     public User updateNickname(Long userId, String nickname) {

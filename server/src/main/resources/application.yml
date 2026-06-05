@@ -32,6 +32,9 @@ app:
     refresh-token-validity: ${JWT_REFRESH_VALIDITY:2592000}   # 초 (30일)
   kakao:
     user-info-uri: https://kapi.kakao.com/v2/user/me
+  apple:
+    # 네이티브 애플 로그인 신원토큰의 aud == 앱 번들ID. 이 값과 일치해야 검증 통과.
+    client-id: ${APPLE_CLIENT_ID:com.yourteam.routinecalendar}
   auth:
     # 카카오 없이 JWT를 발급받는 개발용 로그인. 운영(prod)에선 반드시 false.
     dev-login-enabled: ${DEV_LOGIN_ENABLED:true}

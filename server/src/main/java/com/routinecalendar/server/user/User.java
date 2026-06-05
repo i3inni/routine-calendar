@@ -15,7 +15,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /**
- * 사용자. 신원은 Kakao 로그인으로 잡고, 친구추가는 공개 {@code handle}로 검색한다.
+ * 사용자. 신원은 Kakao 또는 Apple 로그인으로 잡고, 친구추가는 공개 {@code handle}로 검색한다.
+ * (kakaoId / appleId 중 하나로 식별)
  */
 @Entity
 @Table(name = "users")
@@ -27,9 +28,13 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 카카오가 발급하는 회원 번호 */
-    @Column(name = "kakao_id", nullable = false, unique = true)
+    /** 카카오가 발급하는 회원 번호 (애플 전용 유저면 null) */
+    @Column(name = "kakao_id", unique = true)
     private Long kakaoId;
+
+    /** 애플의 stable user id(sub) (카카오 전용 유저면 null) */
+    @Column(name = "apple_id", unique = true, length = 255)
+    private String appleId;
 
     /** 친구가 검색/추가에 쓰는 공개 ID */
     @Column(nullable = false, unique = true, length = 30)
@@ -50,8 +55,9 @@ public class User {
     private Instant updatedAt;
 
     @Builder
-    public User(Long kakaoId, String handle, String nickname, String profileImageUrl) {
+    public User(Long kakaoId, String appleId, String handle, String nickname, String profileImageUrl) {
         this.kakaoId = kakaoId;
+        this.appleId = appleId;
         this.handle = handle;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;

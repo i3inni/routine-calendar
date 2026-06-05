@@ -1,5 +1,6 @@
 package com.routinecalendar.server.auth;
 
+import com.routinecalendar.server.auth.AuthDtos.AppleLoginRequest;
 import com.routinecalendar.server.auth.AuthDtos.AuthResponse;
 import com.routinecalendar.server.auth.AuthDtos.DevLoginRequest;
 import com.routinecalendar.server.auth.AuthDtos.KakaoLoginRequest;
@@ -24,6 +25,12 @@ public class AuthController {
     @PostMapping("/kakao")
     public AuthResponse kakaoLogin(@Valid @RequestBody KakaoLoginRequest request) {
         return authService.kakaoLogin(request);
+    }
+
+    /** 애플 로그인 */
+    @PostMapping("/apple")
+    public AuthResponse appleLogin(@Valid @RequestBody AppleLoginRequest request) {
+        return authService.appleLogin(request);
     }
 
     /** 자동 로그인 / 토큰 갱신 */
