@@ -5,8 +5,10 @@ struct AppBannerView: View {
 
     var body: some View {
         HStack(spacing: 9) {
-            InterlockingRingsIcon(color: Color.rcText(scheme))
-                .frame(width: 34, height: 23)
+            Image("AppLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 28, height: 28)
 
             Text("같이해")
                 .font(.custom("Ownglyph_PDH-Rg", size: 26))
