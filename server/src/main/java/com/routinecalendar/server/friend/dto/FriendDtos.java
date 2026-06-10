@@ -58,4 +58,17 @@ public final class FriendDtos {
         @NotBlank @Size(max = 50) String message
     ){
     }
+
+    /** 카카오 친구 찾기 요청: 클라이언트가 받은 카카오 액세스 토큰 */
+    public record KakaoTokenRequest(@NotBlank String kakaoAccessToken) {
+    }
+
+    /** 카카오 친구 찾기 후보 (앱 가입 + 내 카톡친구 + 아직 친구 아님) */
+    public record KakaoFriendCandidate(
+            Long userId,
+            String handle,
+            String nickname,
+            String profileImageUrl
+    ) {
+    }
 }

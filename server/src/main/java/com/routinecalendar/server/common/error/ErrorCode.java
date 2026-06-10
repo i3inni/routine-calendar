@@ -32,6 +32,9 @@ public enum ErrorCode {
     NOT_FRIEND(HttpStatus.FORBIDDEN, "FRIEND_403_2", "친구가 아닌 사용자입니다."),
     NUDGE_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "FRIEND_429", "잠시 후에 다시 자극할 수 있어요."),
 
+    // 카카오 연동
+    KAKAO_ALREADY_LINKED(HttpStatus.CONFLICT, "KAKAO_409", "이미 다른 계정에 연동된 카카오입니다."),
+
     // 루틴
     ROUTINE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUTINE_404", "루틴을 찾을 수 없습니다."),
     ROUTINE_FORBIDDEN(HttpStatus.FORBIDDEN, "ROUTINE_403", "접근할 수 없는 루틴입니다.");

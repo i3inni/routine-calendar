@@ -2,6 +2,7 @@ package com.routinecalendar.server.user.repository;
 import com.routinecalendar.server.user.domain.User;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByKakaoId(Long kakaoId);
+
+    /** 카카오 회원번호 목록에 해당하는 앱 사용자들 (카카오 친구찾기 매칭용) */
+    List<User> findByKakaoIdIn(Collection<Long> kakaoIds);
 
     Optional<User> findByAppleId(String appleId);
 

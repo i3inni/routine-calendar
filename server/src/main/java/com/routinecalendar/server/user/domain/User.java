@@ -77,6 +77,11 @@ public class User {
         this.nickname = nickname;
     }
 
+    /** 애플 계정에 카카오 연동(친구찾기용 kakaoId 저장). */
+    public void linkKakao(Long kakaoId) {
+        this.kakaoId = kakaoId;
+    }
+
     /** 계정 삭제 예약(유예 시작). */
     public void requestDeletion() {
         this.deletionRequestedAt = Instant.now();
