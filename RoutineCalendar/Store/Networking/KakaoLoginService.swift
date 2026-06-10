@@ -41,6 +41,25 @@ enum KakaoLoginService {
         }
     }
 
+    /// '친구 목록(friends)' 권한을 포함해 로그인 → 카카오 액세스 토큰 반환.
+    /// (카카오 친구 찾기용. 미동의 시 SDK가 동의창을 띄운다.)
+    @MainActor
+    static func loginForFriends() async throws -> String {
+        guard KakaoConfig.isConfigured else { throw KakaoLoginError.notConfigured }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            UserApi.shared.loginWithKakaoAccount(scopes: ["friends", "profile_nickname"]) { token, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let token {
+                    continuation.resume(returning: token.accessToken)
+                } else {
+                    continuation.resume(throwing: KakaoLoginError.noToken)
+                }
+            }
+        }
+    }
+
     static func logout() {
         UserApi.shared.logout { _ in }
     }

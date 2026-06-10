@@ -8,6 +8,9 @@ struct FriendsView: View {
     @State private var showAddSheet = false
     @State private var prefillId: String?
     @State private var requestTab: RequestTab = .received
+    @State private var showKakaoSheet = false
+    @State private var loadingKakao = false
+    @State private var kakaoAlert: String?
 
     private enum RequestTab { case received, sent }
 
@@ -115,6 +118,27 @@ struct FriendsView: View {
                                             style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
                             )
                         }
+
+                        // 카카오로 친구 찾기
+                        Button {
+                            Task { await loadKakaoFriends() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if loadingKakao {
+                                    ProgressView().tint(Color(hex: "191600"))
+                                } else {
+                                    Image(systemName: "message.fill")
+                                    Text("카카오로 친구 찾기")
+                                }
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color(hex: "191600"))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(Color(hex: "FEE500"),
+                                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .disabled(loadingKakao)
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 100)
@@ -124,6 +148,17 @@ struct FriendsView: View {
         }
         .sheet(isPresented: $showAddSheet) {
             AddFriendSheetView(prefillId: prefillId)
+        }
+        .sheet(isPresented: $showKakaoSheet) {
+            KakaoFriendSheet()
+        }
+        .alert("카카오 친구 찾기", isPresented: .init(
+            get: { kakaoAlert != nil },
+            set: { if !$0 { kakaoAlert = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(kakaoAlert ?? "")
         }
         .task { await friendsStore.refresh() }
         // 딥링크로 들어온 친구 ID → 시트 열고 자동 입력
@@ -138,6 +173,25 @@ struct FriendsView: View {
         prefillId = handle
         showAddSheet = true
         deepLink.pendingFriendHandle = nil   // 1회 소비
+    }
+
+    private func loadKakaoFriends() async {
+        loadingKakao = true
+        defer { loadingKakao = false }
+        switch await friendsStore.findKakaoFriends() {
+        case .ok:
+            if friendsStore.kakaoCandidates.isEmpty {
+                kakaoAlert = "카카오 친구 중 이 앱을 쓰는 친구를 찾지 못했어요."
+            } else {
+                showKakaoSheet = true
+            }
+        case .alreadyLinked:
+            kakaoAlert = "이 카카오는 이미 다른 계정에 연동돼 있어요."
+        case .notConfigured:
+            kakaoAlert = "카카오 설정이 필요해요."
+        case .failed:
+            kakaoAlert = "친구를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+        }
     }
 
     private func emptyRequestText(_ text: String) -> some View {
@@ -246,6 +300,74 @@ private struct SentRequestRowView: View {
         .padding(.vertical, 12)
         .background(Color.rcCard(scheme))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+// MARK: - 카카오 친구 찾기 후보 시트
+
+private struct KakaoFriendSheet: View {
+    @Environment(FriendsStore.self) private var friendsStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        ZStack {
+            Color.rcBg(scheme).ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 10) {
+                    Text("카카오 친구 중 이 앱을 쓰는 친구예요")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.rcText2(scheme))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 20)
+                        .padding(.bottom, 4)
+
+                    ForEach(friendsStore.kakaoCandidates) { c in
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(Color.rcCard2(scheme))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Text(String(c.nickname.prefix(1)))
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(Color.rcText(scheme))
+                                )
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(c.nickname)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Color.rcText(scheme))
+                                Text("@\(c.handle)")
+                                    .font(.rcMeta)
+                                    .foregroundStyle(Color.rcText2(scheme))
+                            }
+                            Spacer()
+                            if friendsStore.requestedHandles.contains(c.handle) {
+                                Text("요청됨")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Color.rcText3(scheme))
+                                    .padding(.horizontal, 14).padding(.vertical, 7)
+                                    .background(Color.rcCard2(scheme), in: Capsule())
+                            } else {
+                                Button {
+                                    Task { await friendsStore.requestKakaoFriend(c) }
+                                } label: {
+                                    Text("요청")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Color.rcAccentText(scheme))
+                                        .padding(.horizontal, 16).padding(.vertical, 7)
+                                        .background(Color.rcAccent(scheme), in: Capsule())
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .background(Color.rcCard(scheme))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 40)
+            }
+        }
+        .presentationDragIndicator(.visible)
     }
 }
 

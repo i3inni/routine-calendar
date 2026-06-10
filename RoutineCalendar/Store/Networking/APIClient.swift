@@ -57,6 +57,14 @@ struct FriendRequestDTO: Decodable {
     let fromProfileImageUrl: String?
 }
 
+struct KakaoFriendCandidateDTO: Decodable, Identifiable {
+    let userId: Int64
+    let handle: String
+    let nickname: String
+    let profileImageUrl: String?
+    var id: Int64 { userId }
+}
+
 struct SentFriendRequestDTO: Decodable {
     let requestId: Int64
     let toUserId: Int64
@@ -192,6 +200,11 @@ final class APIClient: @unchecked Sendable {
 
     func outgoingRequests() async throws -> [SentFriendRequestDTO] {
         try await send("GET", "/me/friend-requests/sent")
+    }
+
+    /// 카카오 친구 중 앱 사용자 찾기 (+ 내 카카오 연동)
+    func kakaoFriends(kakaoAccessToken: String) async throws -> [KakaoFriendCandidateDTO] {
+        try await send("POST", "/me/kakao/friends", body: ["kakaoAccessToken": kakaoAccessToken])
     }
 
     func sendFriendRequest(handle: String) async throws {

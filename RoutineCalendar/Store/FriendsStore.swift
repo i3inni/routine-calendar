@@ -28,6 +28,9 @@ final class FriendsStore {
     var outgoingRequests: [FriendRequest] = []   // 내가 보낸 요청 (수락 대기)
     var isLoading = false
 
+    var kakaoCandidates: [KakaoFriendCandidateDTO] = []   // 카카오 친구 찾기 결과
+    var requestedHandles: Set<String> = []               // 후보 중 요청 보낸 handle
+
     private let api = APIClient.shared
 
     // MARK: - 초기화 / 갱신
@@ -103,6 +106,31 @@ final class FriendsStore {
         } catch {
             return .failed
         }
+    }
+
+    // MARK: - 카카오 친구 찾기
+
+    enum KakaoFindResult { case ok, alreadyLinked, notConfigured, failed }
+
+    /// 카카오 로그인(친구목록 권한) → 내 카톡 친구 중 앱 사용자 후보를 불러온다.
+    func findKakaoFriends() async -> KakaoFindResult {
+        guard KakaoConfig.isConfigured else { return .notConfigured }
+        do {
+            let token = try await KakaoLoginService.loginForFriends()
+            kakaoCandidates = try await api.kakaoFriends(kakaoAccessToken: token)
+            requestedHandles = []
+            return .ok
+        } catch let APIError.server(_, code, _) where code == "KAKAO_409" {
+            return .alreadyLinked
+        } catch {
+            return .failed
+        }
+    }
+
+    /// 후보에게 친구 요청 (기존 handle 기반 요청 재사용).
+    func requestKakaoFriend(_ candidate: KakaoFriendCandidateDTO) async {
+        let result = await sendRequest(id: candidate.handle)
+        if case .requestSent = result { requestedHandles.insert(candidate.handle) }
     }
 
     // MARK: - 친구 끊기
