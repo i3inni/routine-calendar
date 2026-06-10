@@ -41,14 +41,43 @@ enum KakaoLoginService {
         }
     }
 
-    /// '친구 목록(friends)' 권한을 포함해 로그인 → 카카오 액세스 토큰 반환.
-    /// (카카오 친구 찾기용. 미동의 시 SDK가 동의창을 띄운다.)
+    /// 카카오 친구 찾기용 로그인. 애플로 들어온 유저는 카카오 세션이 없으므로
+    /// ① 기본 로그인으로 세션을 만들고 → ② friends 권한이 없으면 추가 동의를 받는다.
+    /// 최종적으로 친구목록 권한이 포함된 액세스 토큰을 반환.
     @MainActor
     static func loginForFriends() async throws -> String {
         guard KakaoConfig.isConfigured else { throw KakaoLoginError.notConfigured }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            UserApi.shared.loginWithKakaoAccount(scopes: ["friends", "profile_nickname"]) { token, error in
+        // ① 기본 로그인 (카카오톡 앱 → 없으면 카카오계정)
+        let baseToken = try await login()
+
+        // ② friends 권한이 이미 동의돼 있으면 그대로, 아니면 추가 동의 요청
+        if try await hasScope("friends") {
+            return baseToken
+        }
+        return try await consent(scopes: ["friends", "profile_nickname"])
+    }
+
+    /// 특정 동의항목이 이미 동의됐는지 확인.
+    @MainActor
+    private static func hasScope(_ id: String) async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            UserApi.shared.scopes { info, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    let agreed = info?.scopes?.contains { $0.id == id && $0.agreed } ?? false
+                    continuation.resume(returning: agreed)
+                }
+            }
+        }
+    }
+
+    /// 추가 동의항목(scopes) 요청 → 갱신된 액세스 토큰 반환.
+    @MainActor
+    private static func consent(scopes: [String]) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            UserApi.shared.loginWithKakaoAccount(scopes: scopes) { token, error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else if let token {

@@ -110,20 +110,37 @@ final class FriendsStore {
 
     // MARK: - 카카오 친구 찾기
 
-    enum KakaoFindResult { case ok, alreadyLinked, notConfigured, failed }
+    enum KakaoFindResult { case ok, alreadyLinked, notConfigured, failed(String) }
 
     /// 카카오 로그인(친구목록 권한) → 내 카톡 친구 중 앱 사용자 후보를 불러온다.
     func findKakaoFriends() async -> KakaoFindResult {
         guard KakaoConfig.isConfigured else { return .notConfigured }
+
+        // 1단계: 카카오 로그인(friends 권한)
+        let token: String
         do {
-            let token = try await KakaoLoginService.loginForFriends()
+            token = try await KakaoLoginService.loginForFriends()
+        } catch {
+            return .failed("① 카카오 로그인 실패: \(error.localizedDescription)")
+        }
+
+        // 2단계: 서버에 친구 매칭 요청
+        do {
             kakaoCandidates = try await api.kakaoFriends(kakaoAccessToken: token)
             requestedHandles = []
             return .ok
         } catch let APIError.server(_, code, _) where code == "KAKAO_409" {
             return .alreadyLinked
+        } catch let APIError.server(status, code, message) {
+            return .failed("② 서버 \(status) [\(code ?? "-")] \(message ?? "")")
+        } catch let APIError.transport(e) {
+            return .failed("② 네트워크 오류: \(e.localizedDescription)")
+        } catch let APIError.decoding(e) {
+            return .failed("② 응답 해석 실패: \(e.localizedDescription)")
+        } catch APIError.unauthorized {
+            return .failed("② 인증 만료(앱 토큰 401)")
         } catch {
-            return .failed
+            return .failed("② \(error.localizedDescription)")
         }
     }
 

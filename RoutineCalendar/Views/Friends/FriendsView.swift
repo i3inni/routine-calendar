@@ -189,8 +189,8 @@ struct FriendsView: View {
             kakaoAlert = "이 카카오는 이미 다른 계정에 연동돼 있어요."
         case .notConfigured:
             kakaoAlert = "카카오 설정이 필요해요."
-        case .failed:
-            kakaoAlert = "친구를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+        case .failed(let reason):
+            kakaoAlert = reason   // 디버깅용 상세 사유 (①로그인 / ②서버 단계 + 응답코드)
         }
     }
 
