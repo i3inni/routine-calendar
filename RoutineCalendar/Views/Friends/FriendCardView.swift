@@ -76,22 +76,41 @@ struct FriendCardView: View {
 
             // 자극하기 — 아직 오늘 루틴을 다 못 끝낸 친구에게만
             if !friend.isAllDone {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showNudgeSheet = true
-                } label: {
+                if friend.nudgeOnCooldown, let resetAt = friend.nudgeResetAt {
+                    // 쿨다운: 30분 카운트다운 (탭 불가)
                     HStack(spacing: 6) {
-                        Image(systemName: "hand.point.right.fill")
-                        Text("자극하기")
+                        Image(systemName: "clock")
+                        Text(timerInterval: Date.now...resetAt, countsDown: true)
+                            .monospacedDigit()
+                        Text("후 다시 가능")
                     }
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.rcAccent(scheme))
+                    .foregroundStyle(Color.rcText3(scheme))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(Color.rcAccent(scheme).opacity(0.12),
+                    .background(Color.rcCard2(scheme),
                                 in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                } else {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showNudgeSheet = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "hand.point.right.fill")
+                            Text("자극하기")
+                            Text("\(friend.nudgeRemaining)/2")
+                                .monospacedDigit()
+                                .opacity(0.65)
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.rcAccent(scheme))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.rcAccent(scheme).opacity(0.12),
+                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
@@ -212,12 +231,16 @@ private struct NudgeSheetView: View {
         guard !message.isEmpty, !isSending else { return }
         isSending = true
         errorMessage = nil
-        let ok = await friendsStore.nudge(friend, message: message)
+        let result = await friendsStore.nudge(friend, message: message)
         isSending = false
-        if ok {
+        switch result {
+        case .sent:
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            await friendsStore.refresh()   // 남은 횟수 갱신
             dismiss()
-        } else {
+        case .cooldown:
+            errorMessage = "잠시 후에 다시 자극할 수 있어요. (한 친구당 30분에 2번까지)"
+        case .failed:
             errorMessage = "전송에 실패했어요. 잠시 후 다시 시도해 주세요."
         }
     }

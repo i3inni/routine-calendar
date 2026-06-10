@@ -89,15 +89,19 @@ final class FriendsStore {
 
     // MARK: - 자극하기 (콕)
 
-    /// 친구에게 자극 멘트를 푸시로 보낸다. 성공 여부를 반환한다.
-    func nudge(_ friend: Friend, message: String) async -> Bool {
+    enum NudgeResult { case sent, cooldown, failed }
+
+    /// 친구에게 자극 멘트를 푸시로 보낸다. (한 친구당 30분에 2번 제한)
+    func nudge(_ friend: Friend, message: String) async -> NudgeResult {
         let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, let id = Int64(friend.id) else { return false }
+        guard !text.isEmpty, let id = Int64(friend.id) else { return .failed }
         do {
             try await api.nudge(id, message: text)
-            return true
+            return .sent
+        } catch let APIError.server(_, code, _) where code == "FRIEND_429" {
+            return .cooldown
         } catch {
-            return false
+            return .failed
         }
     }
 
@@ -122,7 +126,9 @@ private extension Friend {
             totalToday: dto.totalToday,
             remaining: dto.remaining,
             done: dto.done,
-            streak: dto.streak
+            streak: dto.streak,
+            nudgeRemaining: dto.nudgeRemaining ?? 2,
+            nudgeResetAt: dto.nudgeResetAtMs.map { Date(timeIntervalSince1970: Double($0) / 1000) }
         )
     }
 }

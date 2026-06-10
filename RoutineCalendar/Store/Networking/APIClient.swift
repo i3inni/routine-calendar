@@ -45,6 +45,8 @@ struct FriendDTO: Decodable {
     let streak: Int
     let done: [String]
     let remaining: [String]
+    let nudgeRemaining: Int?       // 구 서버엔 없을 수 있어 optional
+    let nudgeResetAtMs: Int64?     // 0회일 때 다시 가능해지는 시각(epoch ms)
 }
 
 struct FriendRequestDTO: Decodable {
