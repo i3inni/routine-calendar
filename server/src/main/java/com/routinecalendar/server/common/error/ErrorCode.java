@@ -34,6 +34,7 @@ public enum ErrorCode {
 
     // 카카오 연동
     KAKAO_ALREADY_LINKED(HttpStatus.CONFLICT, "KAKAO_409", "이미 다른 계정에 연동된 카카오입니다."),
+    ACCOUNT_HAS_OTHER_KAKAO(HttpStatus.CONFLICT, "KAKAO_409_2", "이 계정에는 이미 다른 카카오가 연동돼 있어요."),
 
     // 루틴
     ROUTINE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUTINE_404", "루틴을 찾을 수 없습니다."),

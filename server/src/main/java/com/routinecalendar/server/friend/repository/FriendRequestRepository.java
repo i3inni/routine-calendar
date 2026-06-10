@@ -29,4 +29,12 @@ public interface FriendRequestRepository extends JpaRepository<FriendRequest, Lo
 
     Optional<FriendRequest> findByRequesterAndAddresseeAndStatus(
             User requester, User addressee, FriendRequestStatus status);
+
+    /** 나와 특정 상태의 요청이 오가는 상대들의 userId (방향 무관). 후보 제외용. */
+    @Query("""
+            select case when fr.requester = :me then fr.addressee.id else fr.requester.id end
+            from FriendRequest fr
+            where (fr.requester = :me or fr.addressee = :me) and fr.status = :status
+            """)
+    List<Long> findCounterpartIds(@Param("me") User me, @Param("status") FriendRequestStatus status);
 }
