@@ -59,6 +59,9 @@ enum KakaoLoginService {
             if try await hasScope("friends") {
                 return baseToken
             }
+            // KakaoTalk 앱에서 막 복귀한 직후엔 웹 인증 세션의 표시 윈도우가
+            // 아직 준비되지 않아 실패할 수 있어, 잠깐 대기 후 추가 동의를 띄운다.
+            try? await Task.sleep(nanoseconds: 500_000_000)
             return try await consent(scopes: ["friends", "profile_nickname"])
         } catch {
             // SdkError의 실제 사유(ClientFailed/ApiFailed/AuthFailed + reason)를 노출
