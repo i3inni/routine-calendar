@@ -54,42 +54,39 @@ public class ApnsClient {
             return SendResult.SUCCESS;
         }
         try {
-            String env = props.useSandbox() ? "sandbox" : "production";
-            log.info("[APNs] 발송 시도 env={} topic={} token={}…", env, props.bundleId(), preview(deviceToken));
             String payload = objectMapper.writeValueAsString(Map.of(
                     "aps", Map.of(
                             "alert", Map.of("title", title, "body", body),
                             "sound", "default"
                     )
             ));
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl() + "/3/device/" + deviceToken))
-                    .header("authorization", "bearer " + providerToken())
-                    .header("apns-topic", props.bundleId())
-                    .header("apns-push-type", "alert")
-                    .header("apns-priority", "10")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
-                    .build();
 
-            HttpResponse<String> res = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            // 1차: 설정된 환경으로 발송
+            boolean sandbox = props.useSandbox();
+            HttpResponse<String> res = postToApns(sandbox, deviceToken, payload);
             if (res.statusCode() == 200) {
-                log.info("[APNs] 발송 성공(200) env={} token={}…", env, preview(deviceToken));
+                log.info("[APNs] 발송 성공(200) env={} token={}…", envName(sandbox), preview(deviceToken));
                 return SendResult.SUCCESS;
             }
-            // 토큰을 더 못 쓰는 경우(만료/잘못/환경불일치) → 폐기 대상
-            // - 410 Unregistered: 앱 삭제 등
-            // - BadDeviceToken: 토큰 형식/환경 불일치
-            // - BadEnvironmentKeyInToken: sandbox↔production 환경 불일치 토큰
-            // - DeviceTokenNotForTopic: 다른 앱(번들ID)의 토큰
-            if (res.statusCode() == 410
-                    || res.body().contains("Unregistered")
-                    || res.body().contains("BadDeviceToken")
-                    || res.body().contains("BadEnvironmentKeyInToken")
-                    || res.body().contains("DeviceTokenNotForTopic")) {
-                log.info("APNs 폐기 토큰 {}…: {}", preview(deviceToken), res.body());
+
+            // 환경 불일치(sandbox↔production)면 반대 환경으로 1회 재시도.
+            // TestFlight/개발 빌드가 섞여 토큰 환경이 달라도 자동으로 맞춰 보낸다.
+            if (isEnvironmentMismatch(res)) {
+                log.info("[APNs] 환경 불일치({}) → {} 로 재시도 token={}…",
+                        res.body().trim(), envName(!sandbox), preview(deviceToken));
+                res = postToApns(!sandbox, deviceToken, payload);
+                if (res.statusCode() == 200) {
+                    log.info("[APNs] 발송 성공(200, 재시도) env={} token={}…", envName(!sandbox), preview(deviceToken));
+                    return SendResult.SUCCESS;
+                }
+            }
+
+            // 앱 삭제로 죽은 토큰만 폐기. (환경/토픽 문제는 토큰 유지)
+            if (res.statusCode() == 410 || res.body().contains("Unregistered")) {
+                log.info("APNs 폐기 토큰(앱 삭제 추정) {}…: {}", preview(deviceToken), res.body());
                 return SendResult.UNREGISTERED;
             }
-            log.warn("APNs 실패 status={} body={}", res.statusCode(), res.body());
+            log.warn("APNs 실패(토큰 유지) status={} body={}", res.statusCode(), res.body());
             return SendResult.FAILED;
         } catch (Exception e) {
             log.warn("APNs 전송 예외", e);
@@ -97,10 +94,29 @@ public class ApnsClient {
         }
     }
 
-    private String baseUrl() {
-        return props.useSandbox()
-                ? "https://api.sandbox.push.apple.com"
-                : "https://api.push.apple.com";
+    /** 지정한 환경(sandbox/production)으로 1회 발송. */
+    private HttpResponse<String> postToApns(boolean sandbox, String deviceToken, String payload) throws Exception {
+        String base = sandbox ? "https://api.sandbox.push.apple.com" : "https://api.push.apple.com";
+        log.info("[APNs] 발송 시도 env={} topic={} token={}…", envName(sandbox), props.bundleId(), preview(deviceToken));
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(base + "/3/device/" + deviceToken))
+                .header("authorization", "bearer " + providerToken())
+                .header("apns-topic", props.bundleId())
+                .header("apns-push-type", "alert")
+                .header("apns-priority", "10")
+                .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /** sandbox↔production 토큰 환경 불일치 응답인지. (반대 환경 재시도 트리거) */
+    private boolean isEnvironmentMismatch(HttpResponse<String> res) {
+        String b = res.body();
+        return b != null && (b.contains("BadEnvironmentKeyInToken") || b.contains("BadDeviceToken"));
+    }
+
+    private static String envName(boolean sandbox) {
+        return sandbox ? "sandbox" : "production";
     }
 
     /** 프로바이더 인증 JWT(ES256). 최대 1시간 유효 → 50분마다 갱신 후 캐시. */
