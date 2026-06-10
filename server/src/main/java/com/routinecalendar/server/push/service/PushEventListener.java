@@ -1,6 +1,7 @@
 package com.routinecalendar.server.push.service;
 
 import com.routinecalendar.server.friend.domain.FriendRequestedEvent;
+import com.routinecalendar.server.friend.domain.FriendNudgedEvent;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -24,5 +25,13 @@ public class PushEventListener {
     public void onFriendRequested(FriendRequestedEvent event) {
         pushService.sendToUser(event.toUserId(),
                 "새 친구 요청", event.fromNickname() + "님이 친구 요청을 보냈어요");
+    }
+
+    @Async
+    @TransactionalEventListener
+    public void onFriendRequested(FriendNudgedEvent event){
+        pushService.sendToUser(event.toUserId(),
+                event.fromNickname() + "님의 자극",
+                event.message());
     }
 }

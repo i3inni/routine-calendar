@@ -3,6 +3,7 @@ package com.routinecalendar.server.friend.dto;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
 import java.util.List;
+import jakarta.validation.constraints.Size;
 
 /** 친구 도메인 요청/응답 DTO 묶음. */
 public final class FriendDtos {
@@ -37,5 +38,11 @@ public final class FriendDtos {
             List<String> done,
             List<String> remaining
     ) {
+    }
+
+    /** 친구 자극하기: 보낼 멘트 */
+    public record NudgeRequest(
+        @NotBlank @Size(max = 50) String message
+    ){
     }
 }

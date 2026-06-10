@@ -4,6 +4,7 @@ import com.routinecalendar.server.friend.service.FriendService;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendRequestResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.SendFriendRequest;
+import com.routinecalendar.server.friend.dto.FriendDtos.NudgeRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -64,5 +65,13 @@ public class FriendController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeFriend(@AuthenticationPrincipal Long meId, @PathVariable Long userId) {
         friendService.removeFriend(meId, userId);
+    }
+
+    @PostMapping("/me/friends/{userId}/nudge")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void nudge(@AuthenticationPrincipal Long meId,
+                      @PathVariable Long userId,
+                      @Valid @RequestBody NudgeRequest request){
+        friendService.nudge(meId, userId, request.message());
     }
 }

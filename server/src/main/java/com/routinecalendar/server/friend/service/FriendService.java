@@ -11,6 +11,7 @@ import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendRequestResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendResponse;
+import com.routinecalendar.server.friend.domain.FriendNudgedEvent;
 import com.routinecalendar.server.summary.domain.DailySummary;
 import com.routinecalendar.server.summary.repository.DailySummaryRepository;
 import com.routinecalendar.server.user.domain.User;
@@ -134,6 +135,19 @@ public class FriendService {
         User friend = getUser(friendUserId);
         friendshipRepository.findBetween(me, friend)
                 .ifPresent(friendshipRepository::delete);
+    }
+
+    // MARK: - 자극하기 (콕)
+    @Transactional(readOnly = true)
+    public void nudge(Long meId, Long friendUserId, String message){
+        User me = getUser(meId);
+        User friend = getUser(friendUserId);
+        if(!friendshipRepository.existsBetween(me, friend)){
+            throw new BusinessException(ErrorCode.NOT_FRIEND);
+        }
+        eventPublisher.publishEvent(
+            new FriendNudgedEvent(friend.getId(), me.getNickname(), message));
+
     }
 
     // MARK: - 헬퍼

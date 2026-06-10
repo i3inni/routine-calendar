@@ -28,7 +28,8 @@ public enum ErrorCode {
     ALREADY_FRIEND(HttpStatus.CONFLICT, "FRIEND_409_1", "이미 친구입니다."),
     FRIEND_REQUEST_ALREADY_SENT(HttpStatus.CONFLICT, "FRIEND_409_2", "이미 친구 요청을 보냈습니다."),
     FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND_404_1", "친구 요청을 찾을 수 없습니다."),
-    FRIEND_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "FRIEND_403_1", "처리할 수 없는 친구 요청입니다.");
+    FRIEND_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "FRIEND_403_1", "처리할 수 없는 친구 요청입니다."),
+    NOT_FRIEND(HttpStatus.FORBIDDEN, "FRIEND_403_2", "친구가 아닌 사용자입니다.");
 
     private final HttpStatus status;
     private final String code;
