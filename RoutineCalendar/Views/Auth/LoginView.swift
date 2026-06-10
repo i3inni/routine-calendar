@@ -5,6 +5,16 @@ struct LoginView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.colorScheme) private var scheme
 
+    /// 개발용 로그인 버튼 노출 조건. DEBUG 빌드(시뮬레이터)에선 항상,
+    /// Release에선 카카오 키가 없을 때만. (App Store 빌드엔 노출되지 않음)
+    private var showDevLogin: Bool {
+        #if DEBUG
+        return true
+        #else
+        return !KakaoConfig.isConfigured
+        #endif
+    }
+
     var body: some View {
         ZStack {
             Color.rcBg(scheme).ignoresSafeArea()
@@ -54,8 +64,8 @@ struct LoginView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .disabled(session.isLoggingIn)
 
-                // 개발용 로그인 (카카오 키 미설정 시 노출)
-                if !KakaoConfig.isConfigured {
+                // 개발용 로그인 (DEBUG 빌드 또는 카카오 키 미설정 시 노출)
+                if showDevLogin {
                     Button {
                         Task { await session.devLogin() }
                     } label: {

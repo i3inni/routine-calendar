@@ -16,5 +16,23 @@ services:
       timeout: 3s
       retries: 10
 
+  # 로컬 개발용 서버. `docker compose up` 한 번에 DB와 함께 기동된다.
+  # (시뮬레이터 DEBUG 빌드가 localhost:8080 으로 붙는다.)
+  server:
+    build: .
+    container_name: routine-server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # 컨테이너 네트워크 안에서 DB 호스트는 서비스명(postgres)이다.
+      DB_URL: jdbc:postgresql://postgres:5432/routine_calendar
+      DB_USERNAME: routine
+      DB_PASSWORD: routine
+      # 로컬에서 소셜 로그인 없이 들어오기 위한 개발용 로그인 허용.
+      DEV_LOGIN_ENABLED: "true"
+    ports:
+      - "8080:8080"
+
 volumes:
   routine-pgdata:
