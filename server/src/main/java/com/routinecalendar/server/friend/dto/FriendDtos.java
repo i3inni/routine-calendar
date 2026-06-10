@@ -47,7 +47,9 @@ public final class FriendDtos {
             int totalToday,
             int streak,
             List<String> done,
-            List<String> remaining
+            List<String> remaining,
+            int nudgeRemaining,        // 이 친구에게 남은 자극 횟수 (0~2)
+            Long nudgeResetAtMs        // 0회일 때 다시 가능해지는 시각(epoch ms), 아니면 null
     ) {
     }
 

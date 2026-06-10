@@ -3,8 +3,11 @@ import com.routinecalendar.server.friend.domain.Friendship;
 import com.routinecalendar.server.friend.domain.FriendRequest;
 import com.routinecalendar.server.friend.domain.FriendRequestStatus;
 import com.routinecalendar.server.friend.domain.FriendRequestedEvent;
+import com.routinecalendar.server.friend.domain.Poke;
 import com.routinecalendar.server.friend.repository.FriendshipRepository;
 import com.routinecalendar.server.friend.repository.FriendRequestRepository;
+import com.routinecalendar.server.friend.repository.PokeRepository;
+import com.routinecalendar.server.friend.repository.PokeRepository.NudgeStat;
 
 import com.routinecalendar.server.common.AppTime;
 import com.routinecalendar.server.common.error.BusinessException;
@@ -17,6 +20,8 @@ import com.routinecalendar.server.summary.domain.DailySummary;
 import com.routinecalendar.server.summary.repository.DailySummaryRepository;
 import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -29,21 +34,28 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FriendService {
 
+    /** 자극하기 쿨다운: 한 친구당 NUDGE_WINDOW 동안 NUDGE_LIMIT회까지 */
+    private static final int NUDGE_LIMIT = 2;
+    private static final Duration NUDGE_WINDOW = Duration.ofMinutes(30);
+
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
     private final FriendRequestRepository friendRequestRepository;
     private final DailySummaryRepository dailySummaryRepository;
+    private final PokeRepository pokeRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public FriendService(UserRepository userRepository,
                          FriendshipRepository friendshipRepository,
                          FriendRequestRepository friendRequestRepository,
                          DailySummaryRepository dailySummaryRepository,
+                         PokeRepository pokeRepository,
                          ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.friendRequestRepository = friendRequestRepository;
         this.dailySummaryRepository = dailySummaryRepository;
+        this.pokeRepository = pokeRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -64,8 +76,13 @@ public class FriendService {
                 .findByUserInAndSummaryDate(friends, today).stream()
                 .collect(Collectors.toMap(s -> s.getUser().getId(), Function.identity()));
 
+        // 친구별 자극 남은횟수/리셋시각 계산용 통계 (최근 30분)
+        Map<Long, NudgeStat> nudgeStats = pokeRepository
+                .findNudgeStats(me, Instant.now().minus(NUDGE_WINDOW)).stream()
+                .collect(Collectors.toMap(NudgeStat::getFriendId, Function.identity()));
+
         return friends.stream()
-                .map(u -> toFriendResponse(u, summaries.get(u.getId())))
+                .map(u -> toFriendResponse(u, summaries.get(u.getId()), nudgeStats.get(u.getId())))
                 .toList();
     }
 
@@ -147,16 +164,22 @@ public class FriendService {
     }
 
     // MARK: - 자극하기 (콕)
-    @Transactional(readOnly = true)
-    public void nudge(Long meId, Long friendUserId, String message){
+    @Transactional
+    public void nudge(Long meId, Long friendUserId, String message) {
         User me = getUser(meId);
         User friend = getUser(friendUserId);
-        if(!friendshipRepository.existsBetween(me, friend)){
+        if (!friendshipRepository.existsBetween(me, friend)) {
             throw new BusinessException(ErrorCode.NOT_FRIEND);
         }
+        // 한 친구당 30분에 2회까지. 초과하면 쿨다운.
+        long recent = pokeRepository.countByFromUserAndToUserAndCreatedAtAfter(
+                me, friend, Instant.now().minus(NUDGE_WINDOW));
+        if (recent >= NUDGE_LIMIT) {
+            throw new BusinessException(ErrorCode.NUDGE_COOLDOWN);
+        }
+        pokeRepository.save(new Poke(me, friend));
         eventPublisher.publishEvent(
-            new FriendNudgedEvent(friend.getId(), me.getNickname(), message));
-
+                new FriendNudgedEvent(friend.getId(), me.getNickname(), message));
     }
 
     // MARK: - 헬퍼
@@ -182,15 +205,23 @@ public class FriendService {
         return f.getUserLow().getId().equals(me.getId()) ? f.getUserHigh() : f.getUserLow();
     }
 
-    private FriendResponse toFriendResponse(User user, DailySummary summary) {
+    private FriendResponse toFriendResponse(User user, DailySummary summary, NudgeStat nudge) {
+        long used = (nudge != null) ? nudge.getCnt() : 0;
+        int nudgeRemaining = (int) Math.max(0, NUDGE_LIMIT - used);
+        // 0회 남았으면 가장 오래된 자극 + 30분에 다시 가능 (epoch ms)
+        Long nudgeResetAtMs = (nudgeRemaining == 0 && nudge != null)
+                ? nudge.getOldest().plus(NUDGE_WINDOW).toEpochMilli() : null;
+
         if (summary == null) {
             return new FriendResponse(user.getId(), user.getHandle(), user.getNickname(),
-                    user.getProfileImageUrl(), 0, 0, 0, List.of(), List.of());
+                    user.getProfileImageUrl(), 0, 0, 0, List.of(), List.of(),
+                    nudgeRemaining, nudgeResetAtMs);
         }
         return new FriendResponse(user.getId(), user.getHandle(), user.getNickname(),
                 user.getProfileImageUrl(),
                 summary.getDoneCount(), summary.getTotalCount(), summary.getStreak(),
-                summary.getDoneNames(), summary.getRemainingNames());
+                summary.getDoneNames(), summary.getRemainingNames(),
+                nudgeRemaining, nudgeResetAtMs);
     }
 
     private FriendRequestResponse toRequestResponse(FriendRequest request) {

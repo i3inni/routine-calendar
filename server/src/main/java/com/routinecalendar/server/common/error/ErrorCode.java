@@ -30,6 +30,7 @@ public enum ErrorCode {
     FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND_404_1", "친구 요청을 찾을 수 없습니다."),
     FRIEND_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "FRIEND_403_1", "처리할 수 없는 친구 요청입니다."),
     NOT_FRIEND(HttpStatus.FORBIDDEN, "FRIEND_403_2", "친구가 아닌 사용자입니다."),
+    NUDGE_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "FRIEND_429", "잠시 후에 다시 자극할 수 있어요."),
 
     // 루틴
     ROUTINE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUTINE_404", "루틴을 찾을 수 없습니다."),
