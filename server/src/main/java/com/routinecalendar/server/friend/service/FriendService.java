@@ -11,6 +11,7 @@ import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendRequestResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendResponse;
+import com.routinecalendar.server.friend.dto.FriendDtos.SentFriendRequestResponse;
 import com.routinecalendar.server.friend.domain.FriendNudgedEvent;
 import com.routinecalendar.server.summary.domain.DailySummary;
 import com.routinecalendar.server.summary.repository.DailySummaryRepository;
@@ -114,6 +115,14 @@ public class FriendService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<SentFriendRequestResponse> listOutgoingRequests(Long meId) {
+        User me = getUser(meId);
+        return friendRequestRepository.findOutgoing(me, FriendRequestStatus.PENDING).stream()
+                .map(this::toSentResponse)
+                .toList();
+    }
+
     @Transactional
     public void acceptRequest(Long meId, Long requestId) {
         FriendRequest request = loadPendingRequestForMe(meId, requestId);
@@ -188,6 +197,12 @@ public class FriendService {
         User from = request.getRequester();
         return new FriendRequestResponse(request.getId(), from.getId(), from.getHandle(),
                 from.getNickname(), from.getProfileImageUrl(), request.getCreatedAt());
+    }
+
+    private SentFriendRequestResponse toSentResponse(FriendRequest request) {
+        User to = request.getAddressee();
+        return new SentFriendRequestResponse(request.getId(), to.getId(), to.getHandle(),
+                to.getNickname(), to.getProfileImageUrl(), request.getCreatedAt());
     }
 
     private User getUser(Long id) {

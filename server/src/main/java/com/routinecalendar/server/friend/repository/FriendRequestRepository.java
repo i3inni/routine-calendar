@@ -19,6 +19,14 @@ public interface FriendRequestRepository extends JpaRepository<FriendRequest, Lo
             """)
     List<FriendRequest> findIncoming(@Param("me") User me, @Param("status") FriendRequestStatus status);
 
+    /** 내가 보낸 특정 상태의 요청들. 받는 사람(addressee)을 fetch join (N+1 방지). */
+    @Query("""
+            select fr from FriendRequest fr
+            join fetch fr.addressee
+            where fr.requester = :me and fr.status = :status
+            """)
+    List<FriendRequest> findOutgoing(@Param("me") User me, @Param("status") FriendRequestStatus status);
+
     Optional<FriendRequest> findByRequesterAndAddresseeAndStatus(
             User requester, User addressee, FriendRequestStatus status);
 }

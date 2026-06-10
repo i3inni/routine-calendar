@@ -4,6 +4,7 @@ import com.routinecalendar.server.friend.service.FriendService;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendRequestResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.SendFriendRequest;
+import com.routinecalendar.server.friend.dto.FriendDtos.SentFriendRequestResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.NudgeRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -44,6 +45,12 @@ public class FriendController {
     @GetMapping("/me/friend-requests")
     public List<FriendRequestResponse> listIncoming(@AuthenticationPrincipal Long meId) {
         return friendService.listIncomingRequests(meId);
+    }
+
+    /** 내가 보낸 친구 요청 목록 (수락 대기 중) */
+    @GetMapping("/me/friend-requests/sent")
+    public List<SentFriendRequestResponse> listSent(@AuthenticationPrincipal Long meId) {
+        return friendService.listOutgoingRequests(meId);
     }
 
     /** 친구 요청 수락 */

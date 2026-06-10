@@ -26,6 +26,17 @@ public final class FriendDtos {
     ) {
     }
 
+    /** 내가 보낸 친구 요청 1건 (상대=addressee 기준) */
+    public record SentFriendRequestResponse(
+            Long requestId,
+            Long toUserId,
+            String toHandle,
+            String toNickname,
+            String toProfileImageUrl,
+            Instant createdAt
+    ) {
+    }
+
     /** 친구 1명 + 오늘 요약 (iOS Friend 모델과 대응) */
     public record FriendResponse(
             Long userId,
