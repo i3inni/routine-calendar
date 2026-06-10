@@ -67,6 +67,7 @@ public class FriendController {
         friendService.removeFriend(meId, userId);
     }
 
+    /** 친구 자극하기 */
     @PostMapping("/me/friends/{userId}/nudge")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void nudge(@AuthenticationPrincipal Long meId,
