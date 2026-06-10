@@ -59,12 +59,10 @@ enum KakaoLoginService {
                 didLogin = true
             }
 
-            // ② friends 권한이 이미 동의돼 있고 토큰이 있으면 그대로 사용 (재동의 생략)
-            if try await hasScope("friends"), let token = cachedAccessToken() {
-                return token
-            }
-            // KakaoTalk 앱에서 막 복귀한 직후엔 웹 인증 세션의 표시 윈도우가
-            // 아직 준비되지 않아 실패할 수 있어, 잠깐 대기 후 추가 동의를 띄운다.
+            // ② friends 추가 동의 → 갱신된 토큰 반환.
+            //    (이미 동의된 상태면 consent가 동의창 없이 토큰을 돌려준다.)
+            //    KakaoTalk 앱에서 막 복귀한 직후엔 웹 인증 세션 표시 윈도우가 아직
+            //    준비 안 돼 실패할 수 있어, 그 경우엔 잠깐 대기.
             if didLogin {
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
@@ -73,11 +71,6 @@ enum KakaoLoginService {
             // SdkError의 실제 사유(ClientFailed/ApiFailed/AuthFailed + reason)를 노출
             throw KakaoLoginError.sdk(Self.describe(error))
         }
-    }
-
-    /// 캐시된 카카오 액세스 토큰 (hasScope 호출 직후라 유효).
-    private static func cachedAccessToken() -> String? {
-        TokenManagerProvider.shared.manager.getToken()?.accessToken
     }
 
     /// 카카오 SdkError의 구체 사유를 사람이 읽을 수 있는 문자열로.
@@ -92,21 +85,6 @@ enum KakaoLoginService {
             return "AuthFailed(\(reason))"
         default:
             return String(describing: e)
-        }
-    }
-
-    /// 특정 동의항목이 이미 동의됐는지 확인.
-    @MainActor
-    private static func hasScope(_ id: String) async throws -> Bool {
-        try await withCheckedThrowingContinuation { continuation in
-            UserApi.shared.scopes { info, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    let agreed = info?.scopes?.contains { $0.id == id && $0.agreed } ?? false
-                    continuation.resume(returning: agreed)
-                }
-            }
         }
     }
 
