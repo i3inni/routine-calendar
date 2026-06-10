@@ -84,6 +84,20 @@ final class FriendsStore {
         try? await api.declineRequest(id)
     }
 
+    // MARK: - 자극하기 (콕)
+
+    /// 친구에게 자극 멘트를 푸시로 보낸다. 성공 여부를 반환한다.
+    func nudge(_ friend: Friend, message: String) async -> Bool {
+        let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, let id = Int64(friend.id) else { return false }
+        do {
+            try await api.nudge(id, message: text)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     // MARK: - 친구 끊기
 
     func removeFriend(_ friend: Friend) {

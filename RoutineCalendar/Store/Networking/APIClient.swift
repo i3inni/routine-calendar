@@ -2,13 +2,21 @@ import Foundation
 
 enum APIConfig {
     /// 서버 API 베이스 URL. 값은 Config.xcconfig(API_BASE_URL) → Info.plist 에서 주입된다.
+    ///
+    /// DEBUG 빌드(시뮬레이터)에서는 로컬 서버에 붙는다. 로컬은 dev-login이 켜져 있어
+    /// "개발용 로그인"으로 소셜 로그인 없이 바로 들어갈 수 있다. (`./gradlew bootRun`)
+    /// 실기기로 테스트하려면 localhost 대신 Mac의 LAN IP(예: http://192.168.x.x:8080)로 바꾼다.
     static let baseURL: URL = {
+        #if DEBUG
+        return URL(string: "http://localhost:8080")!
+        #else
         guard let str = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,
               let url = URL(string: str.trimmingCharacters(in: .whitespaces)),
               url.scheme != nil else {
             fatalError("API_BASE_URL 이 비어있거나 잘못되었습니다. Config.xcconfig 를 확인하세요.")
         }
         return url
+        #endif
     }()
 }
 
@@ -168,6 +176,11 @@ final class APIClient: @unchecked Sendable {
 
     func removeFriend(_ userId: Int64) async throws {
         try await sendNoContent("DELETE", "/me/friends/\(userId)")
+    }
+
+    /// 친구 자극하기(콕). 입력한 멘트가 상대에게 푸시로 전송된다.
+    func nudge(_ userId: Int64, message: String) async throws {
+        try await sendNoContent("POST", "/me/friends/\(userId)/nudge", body: ["message": message])
     }
 
     func uploadSummary(done: [String], remaining: [String], streak: Int) async throws {
