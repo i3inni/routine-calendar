@@ -132,6 +132,10 @@ struct RoutineSheetView: View {
                                 Spacer()
                                 Toggle("", isOn: $anytime).labelsHidden()
                                     .toggleStyle(RCToggleStyle())
+                                    .onChange(of: anytime) { _, on in
+                                        // 아무때나 = 특정 시간 없음 → 알림 끔
+                                        if on { reminderOn = false }
+                                    }
                             }
                             .padding()
                         }
@@ -142,15 +146,24 @@ struct RoutineSheetView: View {
                         sectionLabel("알림")
                         VStack(spacing: 0) {
                             HStack {
-                                Text("알림 받기")
-                                    .font(.rcBody)
-                                    .foregroundStyle(Color.rcText(scheme))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("알림 받기")
+                                        .font(.rcBody)
+                                        .foregroundStyle(Color.rcText(scheme))
+                                    if anytime {
+                                        Text("‘하루 중 아무때나’를 끄면 설정할 수 있어요")
+                                            .font(.rcMeta)
+                                            .foregroundStyle(Color.rcText3(scheme))
+                                    }
+                                }
                                 Spacer()
                                 Toggle("", isOn: $reminderOn).labelsHidden()
                                     .toggleStyle(RCToggleStyle())
+                                    .disabled(anytime)
                             }
                             .padding()
-                            if reminderOn {
+                            .opacity(anytime ? 0.5 : 1)
+                            if reminderOn && !anytime {
                                 Rectangle().fill(Color.rcSeparator(scheme)).frame(height: 0.5).padding(.leading, 16)
                                 HStack {
                                     Text("시간")
@@ -167,6 +180,7 @@ struct RoutineSheetView: View {
                         .rcCard(scheme, radius: 16)
                         .padding(.horizontal, 16)
                         .animation(.easeInOut(duration: 0.2), value: reminderOn)
+                        .animation(.easeInOut(duration: 0.2), value: anytime)
 
                         // Delete (edit mode only)
                         if mode == .edit {
