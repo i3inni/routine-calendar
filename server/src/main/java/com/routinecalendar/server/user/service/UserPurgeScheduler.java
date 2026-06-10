@@ -2,9 +2,11 @@ package com.routinecalendar.server.user.service;
 import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
 
+import com.routinecalendar.server.common.logging.RequestIdFilter;
 import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,12 +29,18 @@ public class UserPurgeScheduler {
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
     @Transactional
     public void purgeExpiredAccounts() {
-        Instant cutoff = Instant.now().minus(UserService.DELETION_GRACE);
-        List<User> expired = userRepository.findByDeletionRequestedAtBefore(cutoff);
-        if (expired.isEmpty()) {
-            return;
+        // 요청이 아닌 스케줄 작업도 로그 추적되도록 식별자 부여
+        MDC.put(RequestIdFilter.MDC_KEY, "sched-purge");
+        try {
+            Instant cutoff = Instant.now().minus(UserService.DELETION_GRACE);
+            List<User> expired = userRepository.findByDeletionRequestedAtBefore(cutoff);
+            if (expired.isEmpty()) {
+                return;
+            }
+            log.info("[계정삭제] 유예 종료 {}건 영구 삭제", expired.size());
+            userRepository.deleteAll(expired);
+        } finally {
+            MDC.remove(RequestIdFilter.MDC_KEY);
         }
-        log.info("[계정삭제] 유예 종료 {}건 영구 삭제", expired.size());
-        userRepository.deleteAll(expired);
     }
 }

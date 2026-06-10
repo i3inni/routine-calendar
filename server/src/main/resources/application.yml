@@ -53,6 +53,9 @@ app:
     private-key: ${APNS_PRIVATE_KEY:}      # .p8 PEM 내용
 
 logging:
+  # 모든 로그 레벨 뒤에 [requestId]를 붙여 요청 흐름을 추적 (기본 패턴은 그대로 유지)
+  pattern:
+    level: "%5p [%X{requestId:-}]"
   level:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
