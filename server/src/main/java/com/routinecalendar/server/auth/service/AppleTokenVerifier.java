@@ -83,6 +83,7 @@ public class AppleTokenVerifier {
         return key;
     }
 
+    /** 한번에 한 쓰레드만 이 메서드 실행(상호 배제, mutual exclusion) */
     private synchronized void refreshKeys() {
         try {
             String json = restClient.get().uri(JWKS_URL).retrieve().body(String.class);
