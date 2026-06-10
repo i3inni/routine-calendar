@@ -5,13 +5,13 @@ struct LoginView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.colorScheme) private var scheme
 
-    /// 개발용 로그인 버튼 노출 조건. DEBUG 빌드(시뮬레이터)에선 항상,
-    /// Release에선 카카오 키가 없을 때만. (App Store 빌드엔 노출되지 않음)
+    /// 개발용 로그인 버튼 노출 조건. DEBUG 빌드(시뮬레이터)에서만 노출.
+    /// (App Store 빌드엔 절대 안 보임 — 로그인은 애플로만)
     private var showDevLogin: Bool {
         #if DEBUG
         return true
         #else
-        return !KakaoConfig.isConfigured
+        return false
         #endif
     }
 
@@ -37,23 +37,7 @@ struct LoginView: View {
                     ProgressView().padding(.bottom, 8)
                 }
 
-                // 카카오 로그인
-                Button {
-                    Task { await session.loginWithKakao() }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "message.fill")
-                        Text("카카오로 시작하기")
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .foregroundStyle(Color(hex: "191600"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(Color(hex: "FEE500"), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .disabled(session.isLoggingIn)
-
-                // 애플 로그인 (App Store 정책상 소셜 로그인과 함께 제공)
+                // 애플 로그인 (현재 유일한 로그인 수단. 카카오는 추후 '친구 찾기' 연동용으로만 사용)
                 SignInWithAppleButton(.signIn) { request in
                     request.requestedScopes = [.fullName]
                 } onCompletion: { result in
