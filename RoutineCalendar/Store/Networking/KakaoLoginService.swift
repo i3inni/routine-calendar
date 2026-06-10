@@ -1,15 +1,18 @@
 import Foundation
 import KakaoSDKAuth
+import KakaoSDKCommon
 import KakaoSDKUser
 
 enum KakaoLoginError: LocalizedError {
     case notConfigured
     case noToken
+    case sdk(String)
 
     var errorDescription: String? {
         switch self {
         case .notConfigured: return "카카오 앱 키가 설정되지 않았어요."
         case .noToken:       return "카카오 토큰을 받지 못했어요."
+        case .sdk(let msg):  return msg
         }
     }
 }
@@ -48,14 +51,32 @@ enum KakaoLoginService {
     static func loginForFriends() async throws -> String {
         guard KakaoConfig.isConfigured else { throw KakaoLoginError.notConfigured }
 
-        // ① 기본 로그인 (카카오톡 앱 → 없으면 카카오계정)
-        let baseToken = try await login()
+        do {
+            // ① 기본 로그인 (카카오톡 앱 → 없으면 카카오계정)
+            let baseToken = try await login()
 
-        // ② friends 권한이 이미 동의돼 있으면 그대로, 아니면 추가 동의 요청
-        if try await hasScope("friends") {
-            return baseToken
+            // ② friends 권한이 이미 동의돼 있으면 그대로, 아니면 추가 동의 요청
+            if try await hasScope("friends") {
+                return baseToken
+            }
+            return try await consent(scopes: ["friends", "profile_nickname"])
+        } catch {
+            // SdkError의 실제 사유(ClientFailed/ApiFailed/AuthFailed + reason)를 노출
+            throw KakaoLoginError.sdk(Self.describe(error))
         }
-        return try await consent(scopes: ["friends", "profile_nickname"])
+    }
+
+    /// 카카오 SdkError의 구체 사유를 사람이 읽을 수 있는 문자열로.
+    private static func describe(_ error: Error) -> String {
+        guard let e = error as? SdkError else { return error.localizedDescription }
+        switch e {
+        case .ClientFailed(let reason, let msg):
+            return "ClientFailed(\(reason))\(msg.map { " - \($0)" } ?? "")"
+        case .ApiFailed(let reason, _):
+            return "ApiFailed(\(reason))"
+        case .AuthFailed(let reason, _):
+            return "AuthFailed(\(reason))"
+        }
     }
 
     /// 특정 동의항목이 이미 동의됐는지 확인.
