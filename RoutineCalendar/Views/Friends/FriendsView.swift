@@ -308,6 +308,8 @@ private struct SentRequestRowView: View {
 private struct KakaoFriendSheet: View {
     @Environment(FriendsStore.self) private var friendsStore
     @Environment(\.colorScheme) private var scheme
+    @State private var requestError: String?
+    @State private var requestingHandle: String?
 
     var body: some View {
         ZStack {
@@ -348,14 +350,27 @@ private struct KakaoFriendSheet: View {
                                     .background(Color.rcCard2(scheme), in: Capsule())
                             } else {
                                 Button {
-                                    Task { await friendsStore.requestKakaoFriend(c) }
+                                    Task {
+                                        requestingHandle = c.handle
+                                        let result = await friendsStore.requestKakaoFriend(c)
+                                        requestingHandle = nil
+                                        if case .requestSent = result {} else {
+                                            requestError = result.message ?? "요청에 실패했어요."
+                                        }
+                                    }
                                 } label: {
-                                    Text("요청")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Color.rcAccentText(scheme))
-                                        .padding(.horizontal, 16).padding(.vertical, 7)
-                                        .background(Color.rcAccent(scheme), in: Capsule())
+                                    Group {
+                                        if requestingHandle == c.handle {
+                                            ProgressView().tint(Color.rcAccentText(scheme))
+                                        } else {
+                                            Text("요청").font(.system(size: 13, weight: .semibold))
+                                        }
+                                    }
+                                    .foregroundStyle(Color.rcAccentText(scheme))
+                                    .padding(.horizontal, 16).padding(.vertical, 7)
+                                    .background(Color.rcAccent(scheme), in: Capsule())
                                 }
+                                .disabled(requestingHandle != nil)
                             }
                         }
                         .padding(.horizontal, 16).padding(.vertical, 12)
@@ -368,6 +383,14 @@ private struct KakaoFriendSheet: View {
             }
         }
         .presentationDragIndicator(.visible)
+        .alert("친구 요청", isPresented: .init(
+            get: { requestError != nil },
+            set: { if !$0 { requestError = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(requestError ?? "")
+        }
     }
 }
 

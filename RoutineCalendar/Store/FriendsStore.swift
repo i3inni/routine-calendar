@@ -131,6 +131,8 @@ final class FriendsStore {
             return .ok
         } catch let APIError.server(_, code, _) where code == "KAKAO_409" {
             return .alreadyLinked
+        } catch let APIError.server(_, code, message) where code == "KAKAO_409_2" {
+            return .failed(message ?? "이 계정엔 이미 다른 카카오가 연동돼 있어요.")
         } catch let APIError.server(status, code, message) {
             return .failed("② 서버 \(status) [\(code ?? "-")] \(message ?? "")")
         } catch let APIError.transport(e) {
@@ -144,10 +146,15 @@ final class FriendsStore {
         }
     }
 
-    /// 후보에게 친구 요청 (기존 handle 기반 요청 재사용).
-    func requestKakaoFriend(_ candidate: KakaoFriendCandidateDTO) async {
+    /// 후보에게 친구 요청 (기존 handle 기반 요청 재사용). 결과를 반환해 호출부가 피드백.
+    @discardableResult
+    func requestKakaoFriend(_ candidate: KakaoFriendCandidateDTO) async -> AddFriendResult {
         let result = await sendRequest(id: candidate.handle)
-        if case .requestSent = result { requestedHandles.insert(candidate.handle) }
+        if case .requestSent = result {
+            requestedHandles.insert(candidate.handle)
+            await refresh()   // 자동수락(상대가 이미 나에게 요청)된 경우 메인 친구목록 반영
+        }
+        return result
     }
 
     // MARK: - 친구 끊기

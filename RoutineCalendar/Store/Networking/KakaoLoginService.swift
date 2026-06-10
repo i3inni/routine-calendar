@@ -52,21 +52,32 @@ enum KakaoLoginService {
         guard KakaoConfig.isConfigured else { throw KakaoLoginError.notConfigured }
 
         do {
-            // ① 기본 로그인 (카카오톡 앱 → 없으면 카카오계정)
-            let baseToken = try await login()
+            // ① 카카오 세션이 없을 때만 기본 로그인 (있으면 매번 로그인창 안 띄움)
+            var didLogin = false
+            if !AuthApi.hasToken() {
+                _ = try await login()
+                didLogin = true
+            }
 
-            // ② friends 권한이 이미 동의돼 있으면 그대로, 아니면 추가 동의 요청
-            if try await hasScope("friends") {
-                return baseToken
+            // ② friends 권한이 이미 동의돼 있고 토큰이 있으면 그대로 사용 (재동의 생략)
+            if try await hasScope("friends"), let token = cachedAccessToken() {
+                return token
             }
             // KakaoTalk 앱에서 막 복귀한 직후엔 웹 인증 세션의 표시 윈도우가
             // 아직 준비되지 않아 실패할 수 있어, 잠깐 대기 후 추가 동의를 띄운다.
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            if didLogin {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
             return try await consent(scopes: ["friends", "profile_nickname"])
         } catch {
             // SdkError의 실제 사유(ClientFailed/ApiFailed/AuthFailed + reason)를 노출
             throw KakaoLoginError.sdk(Self.describe(error))
         }
+    }
+
+    /// 캐시된 카카오 액세스 토큰 (hasScope 호출 직후라 유효).
+    private static func cachedAccessToken() -> String? {
+        TokenManagerProvider.shared.manager.getToken()?.accessToken
     }
 
     /// 카카오 SdkError의 구체 사유를 사람이 읽을 수 있는 문자열로.
