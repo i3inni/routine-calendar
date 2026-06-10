@@ -76,6 +76,8 @@ enum KakaoLoginService {
             return "ApiFailed(\(reason))"
         case .AuthFailed(let reason, _):
             return "AuthFailed(\(reason))"
+        default:
+            return String(describing: e)
         }
     }
 
