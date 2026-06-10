@@ -56,8 +56,8 @@ targets:
       properties:
         CFBundleName: 같이해
         CFBundleDisplayName: 같이해
-        CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "12"
+        CFBundleShortVersionString: "1.0.1"
+        CFBundleVersion: "14"
         # 표준 HTTPS/TLS만 사용 → 수출규정 비해당. 업로드마다 묻는 질문 제거.
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
@@ -93,8 +93,8 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "DBDJ2HDBU2"
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
-        CURRENT_PROJECT_VERSION: 12
-        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: 14
+        MARKETING_VERSION: "1.0.1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
@@ -134,8 +134,8 @@ targets:
       properties:
         CFBundleName: 같이해
         CFBundleDisplayName: 같이해
-        CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "12"
+        CFBundleShortVersionString: "1.0.1"
+        CFBundleVersion: "14"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
@@ -145,8 +145,8 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "DBDJ2HDBU2"
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
-        CURRENT_PROJECT_VERSION: 12
-        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: 14
+        MARKETING_VERSION: "1.0.1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SKIP_INSTALL: YES
