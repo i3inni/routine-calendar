@@ -11,6 +11,9 @@ final class RoutineStore {
     /// 루틴/완료가 바뀔 때 호출 (서버에 오늘 요약 업로드). 앱 진입점에서 연결.
     var onDataChanged: (() -> Void)?
 
+    /// 로그인+초기 동기화 완료 후 true. 이후의 로컬 변경은 서버로 push된다.
+    private var syncEnabled = false
+
     init() { load() }
 
     // MARK: - CRUD
@@ -18,18 +21,21 @@ final class RoutineStore {
     func addRoutine(_ routine: Routine) {
         routines.append(routine)
         save()
+        push { try await APIClient.shared.createRoutine(routine) }
     }
 
     func updateRoutine(_ routine: Routine) {
         guard let idx = routines.firstIndex(where: { $0.id == routine.id }) else { return }
         routines[idx] = routine
         save()
+        push { try await APIClient.shared.updateRoutine(routine) }
     }
 
     func deleteRoutine(_ routine: Routine) {
         routines.removeAll { $0.id == routine.id }
         completion.removeValue(forKey: routine.id)
         save()
+        push { try await APIClient.shared.deleteRoutine(id: routine.id) }
     }
 
     // MARK: - Completion
@@ -53,6 +59,8 @@ final class RoutineStore {
         if completion[routine.id] == nil { completion[routine.id] = [:] }
         completion[routine.id]![dateKey] = next
         save()
+        let routineId = routine.id
+        push { try await APIClient.shared.setCompletion(routineId: routineId, date: dateKey, count: next) }
     }
 
     // MARK: - Selectors
@@ -103,9 +111,88 @@ final class RoutineStore {
         }
     }
 
+    // MARK: - 서버 동기화
+
+    /// 로그인 직후 1회 호출. 계정 전환 감지 → 서버 상태 채택(또는 기존 로컬 마이그레이션).
+    func syncOnLogin(userId: Int64) async {
+        let last = (AppGroup.defaults.object(forKey: AppGroup.lastSyncedUserKey) as? NSNumber)?.int64Value
+        let isFirstEverSync = (last == nil)
+        let isAccountSwitch = (last != nil && last != userId)
+
+        // 계정이 바뀌면 이전 계정의 로컬 데이터/알림을 비운다 (계정별 분리)
+        if isAccountSwitch {
+            for r in routines { NotificationManager.shared.cancel(for: r.id) }
+            routines = []
+            completion = [:]
+            persistCache()
+        }
+
+        do {
+            async let rTask = APIClient.shared.routines()
+            async let cTask = APIClient.shared.completions()
+            let serverRoutines = try await rTask
+            let serverCompletions = try await cTask
+
+            if isFirstEverSync && serverRoutines.isEmpty && !routines.isEmpty {
+                // 기존(로컬 전용) 사용자의 첫 동기화 → 로컬을 서버로 업로드
+                syncEnabled = true
+                await pushAllLocal()
+            } else {
+                // 서버를 원본으로 채택
+                routines = serverRoutines.map(Routine.init(dto:))
+                completion = Self.buildCompletion(serverCompletions)
+                persistCache()
+                rescheduleAllReminders()
+                updateStreakGuard()
+                syncEnabled = true
+            }
+            AppGroup.defaults.set(NSNumber(value: userId), forKey: AppGroup.lastSyncedUserKey)
+            onDataChanged?()   // 동기화된 상태로 오늘 요약 갱신
+        } catch {
+            // 오프라인 등: 로컬 유지. 이후 변경은 push 시도.
+            syncEnabled = true
+        }
+    }
+
+    /// 로컬 전체를 서버로 업로드 (마이그레이션용).
+    private func pushAllLocal() async {
+        for r in routines {
+            try? await APIClient.shared.createRoutine(r)
+        }
+        for (routineId, dates) in completion {
+            for (dateKey, count) in dates where count > 0 {
+                try? await APIClient.shared.setCompletion(routineId: routineId, date: dateKey, count: count)
+            }
+        }
+    }
+
+    /// 동기화 활성 시에만 서버로 비동기 push (optimistic, 실패는 무시).
+    private func push(_ op: @escaping @Sendable () async throws -> Void) {
+        guard syncEnabled else { return }
+        Task { try? await op() }
+    }
+
+    private func rescheduleAllReminders() {
+        for r in routines { NotificationManager.shared.schedule(for: r) }
+    }
+
+    private static func buildCompletion(_ dtos: [CompletionDTO]) -> [UUID: [String: Int]] {
+        var result: [UUID: [String: Int]] = [:]
+        for d in dtos { result[d.routineId, default: [:]][d.date] = d.count }
+        return result
+    }
+
     // MARK: - Persistence
 
     func save() {
+        persistCache()
+        updateStreakGuard()
+        // 서버에 오늘 요약 업로드 (연결돼 있으면)
+        onDataChanged?()
+    }
+
+    /// 로컬 캐시(App Group) + 위젯만 갱신. 동기화 중 요약 재업로드 루프를 피하기 위해 분리.
+    private func persistCache() {
         let encoder = JSONEncoder()
         if let data = try? encoder.encode(routines) {
             AppGroup.defaults.set(data, forKey: AppGroup.routinesKey)
@@ -115,17 +202,14 @@ final class RoutineStore {
             AppGroup.defaults.set(data, forKey: AppGroup.completionKey)
         }
         AppGroup.defaults.synchronize()
-
-        // 위젯 갱신
         WidgetCenter.shared.reloadAllTimelines()
+    }
 
-        // 오후 9시 스트릭 가드 알림 업데이트 (오늘 예정된 루틴 기준)
+    /// 오후 9시 스트릭 가드 알림 업데이트 (오늘 예정된 루틴 기준)
+    private func updateStreakGuard() {
         let today = Date().dateKey
         let remaining = scheduledRoutines(for: today).filter { !isDone($0, today) }.count
         NotificationManager.shared.scheduleStreakGuard(remainingCount: remaining)
-
-        // 서버에 오늘 요약 업로드 (연결돼 있으면)
-        onDataChanged?()
     }
 
     // MARK: - 친구 공유용 요약
@@ -156,5 +240,23 @@ final class RoutineStore {
                 UUID(uuidString: key).map { ($0, val) }
             })
         }
+    }
+}
+
+// MARK: - 서버 DTO → 화면 모델 매핑
+
+private extension Routine {
+    init(dto: RoutineDTO) {
+        self.init(
+            id: dto.id,
+            name: dto.name,
+            type: RoutineType(rawValue: dto.type) ?? .check,
+            target: dto.target,
+            unit: dto.unit,
+            reminder: dto.reminder,
+            anytime: dto.anytime,
+            repeatMode: RepeatMode(rawValue: dto.repeatMode) ?? .daily,
+            repeatDays: dto.repeatDays
+        )
     }
 }

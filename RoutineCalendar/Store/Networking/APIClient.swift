@@ -55,6 +55,24 @@ struct FriendRequestDTO: Decodable {
     let fromProfileImageUrl: String?
 }
 
+struct RoutineDTO: Decodable {
+    let id: UUID
+    let name: String
+    let type: String
+    let target: Int
+    let unit: String
+    let reminder: String?
+    let anytime: Bool
+    let repeatMode: String
+    let repeatDays: [Int]
+}
+
+struct CompletionDTO: Decodable {
+    let routineId: UUID
+    let date: String   // "yyyy-MM-dd"
+    let count: Int
+}
+
 struct ErrorResponseDTO: Decodable {
     let code: String
     let message: String
@@ -190,6 +208,47 @@ final class APIClient: @unchecked Sendable {
 
     func registerDeviceToken(_ token: String) async throws {
         try await sendNoContent("POST", "/me/device-token", body: ["token": token])
+    }
+
+    // MARK: 루틴 동기화 (계정 귀속)
+
+    func routines() async throws -> [RoutineDTO] {
+        try await send("GET", "/me/routines")
+    }
+
+    func createRoutine(_ r: Routine) async throws {
+        try await sendNoContent("POST", "/me/routines", body: routineBody(r))
+    }
+
+    func updateRoutine(_ r: Routine) async throws {
+        try await sendNoContent("PUT", "/me/routines/\(r.id.uuidString)", body: routineBody(r))
+    }
+
+    func deleteRoutine(id: UUID) async throws {
+        try await sendNoContent("DELETE", "/me/routines/\(id.uuidString)")
+    }
+
+    func completions() async throws -> [CompletionDTO] {
+        try await send("GET", "/me/routines/completions")
+    }
+
+    func setCompletion(routineId: UUID, date: String, count: Int) async throws {
+        try await sendNoContent("PUT", "/me/routines/\(routineId.uuidString)/completions/\(date)",
+                                body: ["count": count])
+    }
+
+    private func routineBody(_ r: Routine) -> [String: Any] {
+        [
+            "id": r.id.uuidString,
+            "name": r.name,
+            "type": r.type.rawValue,
+            "target": r.target,
+            "unit": r.unit,
+            "reminder": r.reminder ?? NSNull(),
+            "anytime": r.anytime,
+            "repeatMode": r.repeatMode.rawValue,
+            "repeatDays": r.repeatDays
+        ]
     }
 
     // MARK: - 코어 요청

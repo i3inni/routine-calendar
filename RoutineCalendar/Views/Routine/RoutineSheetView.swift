@@ -208,11 +208,14 @@ struct RoutineSheetView: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .onAppear { populateFromRoutine() }
-        .confirmationDialog("루틴을 삭제할까요?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-            Button("삭제", role: .destructive) {
+        .alert("루틴을 삭제할까요?", isPresented: $showDeleteConfirm) {
+            Button("아니요", role: .cancel) {}
+            Button("예", role: .destructive) {
                 if let r = routine { store.deleteRoutine(r); NotificationManager.shared.cancel(for: r.id) }
                 dismiss()
             }
+        } message: {
+            Text("이 루틴과 기록이 삭제됩니다.")
         }
     }
 

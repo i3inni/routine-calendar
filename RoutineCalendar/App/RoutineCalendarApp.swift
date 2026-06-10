@@ -82,6 +82,11 @@ struct RoutineCalendarApp: App {
             }
         }
         routineStore.onDataChanged = uploadSummary
+
+        // 루틴을 서버에서 동기화(계정 전환 감지 + 마이그레이션). 끝나면 요약도 갱신됨.
+        if let uid = session.myUserId {
+            await routineStore.syncOnLogin(userId: uid)
+        }
         uploadSummary()
 
         DeviceTokenCenter.shared.registerIfPossible()
