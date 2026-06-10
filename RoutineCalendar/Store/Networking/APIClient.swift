@@ -55,6 +55,14 @@ struct FriendRequestDTO: Decodable {
     let fromProfileImageUrl: String?
 }
 
+struct SentFriendRequestDTO: Decodable {
+    let requestId: Int64
+    let toUserId: Int64
+    let toHandle: String
+    let toNickname: String
+    let toProfileImageUrl: String?
+}
+
 struct RoutineDTO: Decodable {
     let id: UUID
     let name: String
@@ -178,6 +186,10 @@ final class APIClient: @unchecked Sendable {
 
     func incomingRequests() async throws -> [FriendRequestDTO] {
         try await send("GET", "/me/friend-requests")
+    }
+
+    func outgoingRequests() async throws -> [SentFriendRequestDTO] {
+        try await send("GET", "/me/friend-requests/sent")
     }
 
     func sendFriendRequest(handle: String) async throws {

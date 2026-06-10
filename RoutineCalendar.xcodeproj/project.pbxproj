@@ -149,7 +149,7 @@
 		FB137ABA521BF30642477F91 /* FriendCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendCardView.swift; sourceTree = "<group>"; };
 		FC851842E194A0A9A50B9204 /* Friend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Friend.swift; sourceTree = "<group>"; };
 		FEEAA2BD26186173E0CB0D93 /* LockScreenCircularView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenCircularView.swift; sourceTree = "<group>"; };
-		"TEMP_D4E91979-B2CA-4C21-B24A-911A48C20DDA" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		"TEMP_AF0B4D1E-EB19-4B77-AB8C-2F58F043E017" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -371,10 +371,10 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		"TEMP_0283AF81-BBDD-48D5-916D-759B1A681F78" /* routine_calendar */ = {
+		"TEMP_173019D0-3355-4495-A13A-36C4A0CCE500" /* routine_calendar */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_D4E91979-B2CA-4C21-B24A-911A48C20DDA" /* Config.xcconfig */,
+				"TEMP_AF0B4D1E-EB19-4B77-AB8C-2F58F043E017" /* Config.xcconfig */,
 			);
 			path = routine_calendar;
 			sourceTree = "<group>";
@@ -567,7 +567,7 @@
 /* Begin XCBuildConfiguration section */
 		3F09F7C32DBB6293A97C2157 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_D4E91979-B2CA-4C21-B24A-911A48C20DDA" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_AF0B4D1E-EB19-4B77-AB8C-2F58F043E017" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -623,7 +623,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -682,7 +682,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -762,7 +762,7 @@
 		};
 		F031B3C7DACB7E10FF27FFEB /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_D4E91979-B2CA-4C21-B24A-911A48C20DDA" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_AF0B4D1E-EB19-4B77-AB8C-2F58F043E017" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

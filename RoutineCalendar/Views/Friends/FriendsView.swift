@@ -7,6 +7,9 @@ struct FriendsView: View {
 
     @State private var showAddSheet = false
     @State private var prefillId: String?
+    @State private var requestTab: RequestTab = .received
+
+    private enum RequestTab { case received, sent }
 
     private var sortedFriends: [Friend] {
         friendsStore.friends.sorted { !$0.isAllDone && $1.isAllDone }
@@ -48,22 +51,37 @@ struct FriendsView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 16)
 
-                    // 받은 친구 요청
-                    if !friendsStore.incomingRequests.isEmpty {
-                        Text("받은 친구 요청")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.rcText2(scheme))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 8)
+                    // 친구 요청 (받은/보낸 탭)
+                    if !friendsStore.incomingRequests.isEmpty || !friendsStore.outgoingRequests.isEmpty {
+                        Picker("", selection: $requestTab) {
+                            Text("받은 \(friendsStore.incomingRequests.count)").tag(RequestTab.received)
+                            Text("보낸 \(friendsStore.outgoingRequests.count)").tag(RequestTab.sent)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
 
                         VStack(spacing: 10) {
-                            ForEach(friendsStore.incomingRequests) { request in
-                                RequestRowView(
-                                    request: request,
-                                    onAccept: { Task { await friendsStore.acceptRequest(request) } },
-                                    onDecline: { Task { await friendsStore.declineRequest(request) } }
-                                )
+                            if requestTab == .received {
+                                if friendsStore.incomingRequests.isEmpty {
+                                    emptyRequestText("받은 요청이 없어요")
+                                } else {
+                                    ForEach(friendsStore.incomingRequests) { request in
+                                        RequestRowView(
+                                            request: request,
+                                            onAccept: { Task { await friendsStore.acceptRequest(request) } },
+                                            onDecline: { Task { await friendsStore.declineRequest(request) } }
+                                        )
+                                    }
+                                }
+                            } else {
+                                if friendsStore.outgoingRequests.isEmpty {
+                                    emptyRequestText("보낸 요청이 없어요")
+                                } else {
+                                    ForEach(friendsStore.outgoingRequests) { request in
+                                        SentRequestRowView(request: request)
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -121,6 +139,14 @@ struct FriendsView: View {
         showAddSheet = true
         deepLink.pendingFriendHandle = nil   // 1회 소비
     }
+
+    private func emptyRequestText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 14))
+            .foregroundStyle(Color.rcText3(scheme))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+    }
 }
 
 // MARK: - 받은 친구 요청 카드
@@ -173,6 +199,48 @@ private struct RequestRowView: View {
                     .padding(.vertical, 7)
                     .background(Color.rcAccent(scheme), in: Capsule())
             }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.rcCard(scheme))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+// MARK: - 보낸 친구 요청 카드 (조회 전용)
+
+private struct SentRequestRowView: View {
+    let request: FriendRequest   // from* 필드에 받는 사람 정보가 담겨 있음
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.rcCard2(scheme))
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Text(request.initial)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.rcText(scheme))
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(request.fromName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.rcText(scheme))
+                Text("수락 대기 중")
+                    .font(.rcMeta)
+                    .foregroundStyle(Color.rcText2(scheme))
+            }
+
+            Spacer()
+
+            Text("보냄")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.rcText3(scheme))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Color.rcCard2(scheme), in: Capsule())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

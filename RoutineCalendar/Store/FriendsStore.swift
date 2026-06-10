@@ -25,6 +25,7 @@ enum AddFriendResult {
 final class FriendsStore {
     var friends: [Friend] = []
     var incomingRequests: [FriendRequest] = []
+    var outgoingRequests: [FriendRequest] = []   // 내가 보낸 요청 (수락 대기)
     var isLoading = false
 
     private let api = APIClient.shared
@@ -41,8 +42,10 @@ final class FriendsStore {
         do {
             async let friendsDTO = api.friends()
             async let requestsDTO = api.incomingRequests()
+            async let sentDTO = api.outgoingRequests()
             friends = try await friendsDTO.map(Friend.init(dto:))
             incomingRequests = try await requestsDTO.map(FriendRequest.init(dto:))
+            outgoingRequests = try await sentDTO.map(FriendRequest.init(sentDto:))
         } catch {
             // 네트워크/인증 실패 시 기존 목록 유지
         }
@@ -130,6 +133,17 @@ private extension FriendRequest {
             id: String(dto.requestId),
             fromCode: dto.fromHandle,
             fromName: dto.fromNickname,
+            toCode: "",
+            createdAt: Date()
+        )
+    }
+
+    /// 보낸 요청: 표시 대상은 받는 사람(addressee). from* 필드에 상대 정보를 담는다.
+    init(sentDto: SentFriendRequestDTO) {
+        self.init(
+            id: String(sentDto.requestId),
+            fromCode: sentDto.toHandle,
+            fromName: sentDto.toNickname,
             toCode: "",
             createdAt: Date()
         )
