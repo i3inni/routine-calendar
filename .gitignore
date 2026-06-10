@@ -10,6 +10,8 @@ xcuserdata/
 *.xcuserstate
 DerivedData/
 .DS_Store
+# xcodebuild 산출물 (루트 build/)
+/build/
 
 # ── Spring Boot / Gradle ──
 server/build/
