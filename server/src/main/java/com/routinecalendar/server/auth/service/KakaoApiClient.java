@@ -8,7 +8,8 @@ import com.routinecalendar.server.config.KakaoProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * 카카오 API 호출. 클라이언트가 보낸 '카카오 액세스 토큰'으로 회원정보를 조회해
@@ -37,8 +38,8 @@ public class KakaoApiClient {
                 .body(KakaoUserResponse.class);
     }
 
-    /** 내 카톡 친구 중 '이 앱 사용자'의 카카오 회원번호 목록 */
-    public List<Long> fetchFriendKakaoIds(String kakaoAccessToken) {
+    /** 내 카톡 친구 중 '이 앱 사용자' → 카카오 회원번호 : 카톡 표시이름(profile_nickname) */
+    public Map<Long, String> fetchFriends(String kakaoAccessToken) {
         KakaoFriendsResponse res = restClient.get()
                 .uri(FRIENDS_URI)   // 필요시 ?limit=100 페이지네이션
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + kakaoAccessToken)
@@ -50,7 +51,11 @@ public class KakaoApiClient {
                     throw new BusinessException(ErrorCode.KAKAO_FRIENDS_CONSENT_REQUIRED);
                 })
                 .body(KakaoFriendsResponse.class);
-        if (res == null || res.elements() == null) return List.of();
-        return res.elements().stream().map(KakaoFriendsResponse.Element::id).toList();
+        if (res == null || res.elements() == null) return Map.of();
+        Map<Long, String> friends = new LinkedHashMap<>();
+        for (KakaoFriendsResponse.Element e : res.elements()) {
+            friends.put(e.id(), e.profileNickname());
+        }
+        return friends;
     }
 }

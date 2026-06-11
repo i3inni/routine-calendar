@@ -10,6 +10,7 @@ import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,14 +36,14 @@ public class KakaoFriendMatcher {
     }
 
     @Transactional
-    public List<KakaoFriendCandidate> matchAndLink(Long meId, Long myKakaoId, List<Long> friendKakaoIds) {
+    public List<KakaoFriendCandidate> matchAndLink(Long meId, Long myKakaoId, Map<Long, String> kakaoFriends) {
         User me = userRepository.findById(meId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         // 내 카카오 연동 (나도 친구들 목록에 검색되도록 kakaoId 저장)
         linkKakaoIfPossible(me, myKakaoId);
 
-        if (friendKakaoIds.isEmpty()) {
+        if (kakaoFriends.isEmpty()) {
             return List.of();
         }
 
@@ -51,13 +52,14 @@ public class KakaoFriendMatcher {
         Set<Long> pending = new HashSet<>(
                 friendRequestRepository.findCounterpartIds(me, FriendRequestStatus.PENDING));
 
-        return userRepository.findByKakaoIdIn(friendKakaoIds).stream()
+        return userRepository.findByKakaoIdIn(kakaoFriends.keySet()).stream()
                 .filter(u -> !u.getId().equals(meId))                // 나 제외
                 .filter(u -> u.getDeletionRequestedAt() == null)     // 삭제예약 제외
                 .filter(u -> !friendIds.contains(u.getId()))         // 이미 친구 제외
                 .filter(u -> !pending.contains(u.getId()))           // 요청 진행중 제외
                 .map(u -> new KakaoFriendCandidate(
-                        u.getId(), u.getHandle(), u.getNickname(), u.getProfileImageUrl()))
+                        u.getId(), u.getHandle(), u.getNickname(), u.getProfileImageUrl(),
+                        kakaoFriends.get(u.getKakaoId())))   // 카톡 표시 이름
                 .toList();
     }
 

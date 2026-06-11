@@ -4,6 +4,7 @@ import com.routinecalendar.server.auth.dto.KakaoUserResponse;
 import com.routinecalendar.server.auth.service.KakaoApiClient;
 import com.routinecalendar.server.friend.dto.FriendDtos.KakaoFriendCandidate;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,9 +26,9 @@ public class KakaoFriendService {
     public List<KakaoFriendCandidate> findAppFriends(Long meId, String kakaoAccessToken) {
         // 외부 호출은 트랜잭션 밖
         KakaoUserResponse kakao = kakaoApiClient.fetchUser(kakaoAccessToken);
-        List<Long> friendKakaoIds = kakaoApiClient.fetchFriendKakaoIds(kakaoAccessToken);
+        Map<Long, String> kakaoFriends = kakaoApiClient.fetchFriends(kakaoAccessToken);
 
         // DB 작업만 트랜잭션 (별도 bean → 프록시 경유 → @Transactional 정상 적용)
-        return matcher.matchAndLink(meId, kakao.id(), friendKakaoIds);
+        return matcher.matchAndLink(meId, kakao.id(), kakaoFriends);
     }
 }

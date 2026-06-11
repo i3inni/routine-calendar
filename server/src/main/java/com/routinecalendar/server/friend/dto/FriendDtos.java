@@ -68,7 +68,8 @@ public final class FriendDtos {
             Long userId,
             String handle,
             String nickname,
-            String profileImageUrl
+            String profileImageUrl,
+            String kakaoNickname    // 카카오톡 친구목록에 보이는 이름(profile_nickname)
     ) {
     }
 }
