@@ -46,6 +46,9 @@ public class KakaoApiClient {
                 .onStatus(status -> status.value() == 401, (req, r) -> {
                     throw new BusinessException(ErrorCode.INVALID_KAKAO_TOKEN);
                 })
+                .onStatus(status -> status.value() == 403, (req, r) -> {
+                    throw new BusinessException(ErrorCode.KAKAO_FRIENDS_CONSENT_REQUIRED);
+                })
                 .body(KakaoFriendsResponse.class);
         if (res == null || res.elements() == null) return List.of();
         return res.elements().stream().map(KakaoFriendsResponse.Element::id).toList();

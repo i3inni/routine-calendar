@@ -37,4 +37,12 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
                or (f.userLow = :b and f.userHigh = :a)
             """)
     Optional<Friendship> findBetween(@Param("a") User a, @Param("b") User b);
+
+    /** 내 친구들의 userId를 한 번에 (순서 무관). 후보 필터용 — existsBetween N+1 회피. */
+    @Query("""
+            select case when f.userLow = :me then f.userHigh.id else f.userLow.id end
+            from Friendship f
+            where f.userLow = :me or f.userHigh = :me
+            """)
+    List<Long> findFriendIds(@Param("me") User me);
 }
