@@ -53,8 +53,10 @@ enum KakaoLoginService {
 
         do {
             // ① 카카오 세션이 없을 때만 기본 로그인 (있으면 매번 로그인창 안 띄움)
+            var didLogin = false
             if !AuthApi.hasToken() {
                 _ = try await login()
+                didLogin = true
             }
 
             // ② 이미 friends 동의가 돼 있으면 추가 동의(웹 플로우)를 건너뛰고
@@ -63,12 +65,16 @@ enum KakaoLoginService {
                 return try await refreshedAccessToken()
             }
 
-            // ③ 아직 동의 전이면 추가 동의 요청. 카톡 앱 복귀 직후엔 웹 인증 세션
-            //    윈도우가 준비 안 돼 첫 시도가 실패할 수 있어, 그 경우 1회만 재시도.
+            // ③ 카톡 앱에서 막 복귀한 직후엔 앱이 다시 포그라운드로 올라오고 웹 인증
+            //    세션의 표시 윈도우가 준비될 때까지 시간이 필요하다. 충분히 대기한 뒤
+            //    동의창을 띄워야 안정적으로 뜬다. (그래도 실패하면 1회 더 재시도)
+            if didLogin {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+            }
             do {
                 return try await consent(scopes: ["friends", "profile_nickname"])
             } catch {
-                try? await Task.sleep(nanoseconds: 400_000_000)
+                try? await Task.sleep(nanoseconds: 800_000_000)
                 return try await consent(scopes: ["friends", "profile_nickname"])
             }
         } catch {

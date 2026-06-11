@@ -61,6 +61,7 @@ final class FriendsStore {
         guard !handle.isEmpty else { return .notFound }
         do {
             try await api.sendFriendRequest(handle: handle)
+            await refresh()   // 보낸 요청/친구 변화 즉시 반영 (수동 새로고침 불필요)
             return .requestSent
         } catch let APIError.server(_, code, message) {
             switch code {
@@ -151,10 +152,9 @@ final class FriendsStore {
     /// 후보에게 친구 요청 (기존 handle 기반 요청 재사용). 결과를 반환해 호출부가 피드백.
     @discardableResult
     func requestKakaoFriend(_ candidate: KakaoFriendCandidateDTO) async -> AddFriendResult {
-        let result = await sendRequest(id: candidate.handle)
+        let result = await sendRequest(id: candidate.handle)   // 내부에서 refresh
         if case .requestSent = result {
             requestedHandles.insert(candidate.handle)
-            await refresh()   // 자동수락(상대가 이미 나에게 요청)된 경우 메인 친구목록 반영
         }
         return result
     }

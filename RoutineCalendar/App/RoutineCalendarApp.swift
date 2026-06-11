@@ -126,7 +126,25 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        notifyIfFriendPush(notification)
         completionHandler([.banner, .sound, .list])
+    }
+
+    // 알림 탭으로 앱에 들어온 경우에도 갱신 트리거
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        notifyIfFriendPush(response.notification)
+        completionHandler()
+    }
+
+    /// 친구 관련 푸시(type=friend)면 친구 데이터 갱신 신호를 보낸다.
+    private func notifyIfFriendPush(_ notification: UNNotification) {
+        if notification.request.content.userInfo["type"] as? String == "friend" {
+            NotificationCenter.default.post(name: .friendDataChanged, object: nil)
+        }
     }
 
     func application(
@@ -144,4 +162,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         print("⚠️ APNs 등록 실패:", error)
     }
+}
+
+// 친구 관련 푸시 수신 시 친구 데이터 갱신을 알리는 로컬 알림 이름
+extension Notification.Name {
+    static let friendDataChanged = Notification.Name("friendDataChanged")
 }

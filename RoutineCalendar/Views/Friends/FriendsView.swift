@@ -161,12 +161,18 @@ struct FriendsView: View {
         } message: {
             Text(kakaoAlert ?? "")
         }
-        .task { await friendsStore.refresh() }
         // 딥링크로 들어온 친구 ID → 시트 열고 자동 입력
         .onChange(of: deepLink.pendingFriendHandle) { _, new in
             consumeDeepLink(new)
         }
-        .onAppear { consumeDeepLink(deepLink.pendingFriendHandle) }
+        .onAppear {
+            Task { await friendsStore.refresh() }   // 탭 진입 때마다 갱신 (다른 사람의 수락 등 반영)
+            consumeDeepLink(deepLink.pendingFriendHandle)
+        }
+        // 친구 관련 푸시 수신 시 즉시 갱신 (탭에 머물러 있어도 반영)
+        .onReceive(NotificationCenter.default.publisher(for: .friendDataChanged)) { _ in
+            Task { await friendsStore.refresh() }
+        }
     }
 
     private func consumeDeepLink(_ handle: String?) {
@@ -342,10 +348,15 @@ private struct KakaoFriendSheet: View {
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundStyle(Color.rcText(scheme))
                                     if let kakao = c.kakaoNickname, !kakao.isEmpty {
-                                        Text("카톡 \(kakao)")
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(Color.rcText3(scheme))
-                                            .lineLimit(1)
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "message.fill")
+                                                .font(.system(size: 10))
+                                                .foregroundStyle(Color(hex: "FEE500"))
+                                            Text(kakao)
+                                                .font(.system(size: 12))
+                                                .foregroundStyle(Color.rcText3(scheme))
+                                                .lineLimit(1)
+                                        }
                                     }
                                 }
                                 Text("@\(c.handle)")

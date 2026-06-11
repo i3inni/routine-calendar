@@ -132,16 +132,6 @@ struct AddFriendSheetView: View {
                             }
                         }
                         .padding(.horizontal, 16)
-
-                        // Footer
-                        Text("카카오 로그인으로 친구를 연결합니다.")
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(Color.rcText2(scheme))
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 24)
-                            .padding(.bottom, 40)
                     }
                 }
             }
