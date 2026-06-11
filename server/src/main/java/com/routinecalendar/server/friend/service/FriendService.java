@@ -3,6 +3,7 @@ import com.routinecalendar.server.friend.domain.Friendship;
 import com.routinecalendar.server.friend.domain.FriendRequest;
 import com.routinecalendar.server.friend.domain.FriendRequestStatus;
 import com.routinecalendar.server.friend.domain.FriendRequestedEvent;
+import com.routinecalendar.server.friend.domain.FriendRequestAcceptedEvent;
 import com.routinecalendar.server.friend.domain.Poke;
 import com.routinecalendar.server.friend.repository.FriendshipRepository;
 import com.routinecalendar.server.friend.repository.FriendRequestRepository;
@@ -145,6 +146,9 @@ public class FriendService {
         FriendRequest request = loadPendingRequestForMe(meId, requestId);
         request.accept();
         createFriendship(request.getRequester(), request.getAddressee());
+        // 요청 보냈던 사람에게 '수락됨' 푸시 (친구목록 갱신 트리거)
+        eventPublisher.publishEvent(new FriendRequestAcceptedEvent(
+                request.getRequester().getId(), request.getAddressee().getNickname()));
     }
 
     @Transactional

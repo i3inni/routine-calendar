@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -49,17 +50,27 @@ public class ApnsClient {
     }
 
     public SendResult send(String deviceToken, String title, String body) {
+        return send(deviceToken, title, body, null);
+    }
+
+    /**
+     * @param type 클라이언트가 분기할 커스텀 종류(예: "friend"=친구목록 갱신 트리거). null이면 미포함.
+     */
+    public SendResult send(String deviceToken, String title, String body, String type) {
         if (!props.enabled()) {
             log.info("[APNs 비활성] '{}' / '{}' → token {}…", title, body, preview(deviceToken));
             return SendResult.SUCCESS;
         }
         try {
-            String payload = objectMapper.writeValueAsString(Map.of(
-                    "aps", Map.of(
-                            "alert", Map.of("title", title, "body", body),
-                            "sound", "default"
-                    )
+            Map<String, Object> root = new HashMap<>();
+            root.put("aps", Map.of(
+                    "alert", Map.of("title", title, "body", body),
+                    "sound", "default"
             ));
+            if (type != null) {
+                root.put("type", type);   // 앱이 userInfo["type"]로 읽어 분기
+            }
+            String payload = objectMapper.writeValueAsString(root);
 
             // 1차: 설정된 환경으로 발송
             boolean sandbox = props.useSandbox();

@@ -31,6 +31,12 @@ public class PushService {
 
     @Transactional
     public void sendToUser(Long userId, String title, String body) {
+        sendToUser(userId, title, body, null);
+    }
+
+    /** type: 앱이 분기할 커스텀 종류(예: "friend"=친구목록 갱신 트리거) */
+    @Transactional
+    public void sendToUser(Long userId, String title, String body, String type) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return;
@@ -42,7 +48,7 @@ public class PushService {
         }
         log.info("푸시 발송 — userId={} 기기 {}대, title='{}'", userId, tokens.size(), title);
         for (DeviceToken dt : tokens) {
-            SendResult result = apnsClient.send(dt.getToken(), title, body);
+            SendResult result = apnsClient.send(dt.getToken(), title, body, type);
             log.info("푸시 결과 — userId={} token={}… result={}",
                     userId, dt.getToken().substring(0, Math.min(8, dt.getToken().length())), result);
             if (result == SendResult.UNREGISTERED) {
