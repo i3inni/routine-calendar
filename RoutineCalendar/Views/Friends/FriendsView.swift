@@ -151,6 +151,7 @@ struct FriendsView: View {
         }
         .sheet(isPresented: $showKakaoSheet) {
             KakaoFriendSheet()
+                .presentationDetents([.fraction(0.45), .large])
         }
         .alert("카카오 친구 찾기", isPresented: .init(
             get: { kakaoAlert != nil },
@@ -322,8 +323,8 @@ private struct KakaoFriendSheet: View {
                         .font(.system(size: 14))
                         .foregroundStyle(Color.rcText2(scheme))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 20)
-                        .padding(.bottom, 4)
+                        .padding(.top, 28)
+                        .padding(.bottom, 10)
 
                     ForEach(friendsStore.kakaoCandidates) { c in
                         HStack(spacing: 12) {
@@ -336,9 +337,17 @@ private struct KakaoFriendSheet: View {
                                         .foregroundStyle(Color.rcText(scheme))
                                 )
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(c.nickname)
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(Color.rcText(scheme))
+                                HStack(spacing: 6) {
+                                    Text(c.nickname)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(Color.rcText(scheme))
+                                    if let kakao = c.kakaoNickname, !kakao.isEmpty {
+                                        Text("카톡 \(kakao)")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(Color.rcText3(scheme))
+                                            .lineLimit(1)
+                                    }
+                                }
                                 Text("@\(c.handle)")
                                     .font(.rcMeta)
                                     .foregroundStyle(Color.rcText2(scheme))
@@ -380,7 +389,7 @@ private struct KakaoFriendSheet: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
                 .padding(.bottom, 40)
             }
         }

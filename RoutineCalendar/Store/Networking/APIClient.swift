@@ -62,6 +62,7 @@ struct KakaoFriendCandidateDTO: Decodable, Identifiable {
     let handle: String
     let nickname: String
     let profileImageUrl: String?
+    let kakaoNickname: String?    // 카카오톡 표시 이름
     var id: Int64 { userId }
 }
 
