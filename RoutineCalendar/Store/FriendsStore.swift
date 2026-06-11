@@ -110,7 +110,7 @@ final class FriendsStore {
 
     // MARK: - 카카오 친구 찾기
 
-    enum KakaoFindResult { case ok, alreadyLinked, notConfigured, failed(String) }
+    enum KakaoFindResult { case ok, alreadyLinked, consentRequired, notConfigured, failed(String) }
 
     /// 카카오 로그인(친구목록 권한) → 내 카톡 친구 중 앱 사용자 후보를 불러온다.
     func findKakaoFriends() async -> KakaoFindResult {
@@ -133,6 +133,8 @@ final class FriendsStore {
             return .alreadyLinked
         } catch let APIError.server(_, code, message) where code == "KAKAO_409_2" {
             return .failed(message ?? "이 계정엔 이미 다른 카카오가 연동돼 있어요.")
+        } catch let APIError.server(_, code, _) where code == "KAKAO_403_3" {
+            return .consentRequired
         } catch let APIError.server(status, code, message) {
             return .failed("② 서버 \(status) [\(code ?? "-")] \(message ?? "")")
         } catch let APIError.transport(e) {

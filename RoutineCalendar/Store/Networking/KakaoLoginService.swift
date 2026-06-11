@@ -53,23 +53,58 @@ enum KakaoLoginService {
 
         do {
             // ① 카카오 세션이 없을 때만 기본 로그인 (있으면 매번 로그인창 안 띄움)
-            var didLogin = false
             if !AuthApi.hasToken() {
                 _ = try await login()
-                didLogin = true
             }
 
-            // ② friends 추가 동의 → 갱신된 토큰 반환.
-            //    (이미 동의된 상태면 consent가 동의창 없이 토큰을 돌려준다.)
-            //    KakaoTalk 앱에서 막 복귀한 직후엔 웹 인증 세션 표시 윈도우가 아직
-            //    준비 안 돼 실패할 수 있어, 그 경우엔 잠깐 대기.
-            if didLogin {
-                try? await Task.sleep(nanoseconds: 500_000_000)
+            // ② 이미 friends 동의가 돼 있으면 추가 동의(웹 플로우)를 건너뛰고
+            //    기존 토큰을 갱신해 그대로 사용 → 재방문 시 동의창/웹세션 0회.
+            if try await hasFriendsScope() {
+                return try await refreshedAccessToken()
             }
-            return try await consent(scopes: ["friends", "profile_nickname"])
+
+            // ③ 아직 동의 전이면 추가 동의 요청. 카톡 앱 복귀 직후엔 웹 인증 세션
+            //    윈도우가 준비 안 돼 첫 시도가 실패할 수 있어, 그 경우 1회만 재시도.
+            do {
+                return try await consent(scopes: ["friends", "profile_nickname"])
+            } catch {
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                return try await consent(scopes: ["friends", "profile_nickname"])
+            }
         } catch {
             // SdkError의 실제 사유(ClientFailed/ApiFailed/AuthFailed + reason)를 노출
             throw KakaoLoginError.sdk(Self.describe(error))
+        }
+    }
+
+    /// 현재 토큰에 'friends' 동의가 포함돼 있는지.
+    @MainActor
+    private static func hasFriendsScope() async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            UserApi.shared.scopes { scopeInfo, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    let agreed = scopeInfo?.scopes?.contains { $0.id == "friends" && $0.agreed } ?? false
+                    continuation.resume(returning: agreed)
+                }
+            }
+        }
+    }
+
+    /// 저장된 세션을 갱신해 유효한 액세스 토큰 문자열을 얻는다(웹 UI 없음).
+    @MainActor
+    private static func refreshedAccessToken() async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            AuthApi.shared.refreshToken { token, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let token {
+                    continuation.resume(returning: token.accessToken)
+                } else {
+                    continuation.resume(throwing: KakaoLoginError.noToken)
+                }
+            }
         }
     }
 

@@ -187,6 +187,8 @@ struct FriendsView: View {
             }
         case .alreadyLinked:
             kakaoAlert = "이 카카오는 이미 다른 계정에 연동돼 있어요."
+        case .consentRequired:
+            kakaoAlert = "카카오 친구 목록 제공 동의가 필요해요. 다시 시도하면 동의 화면이 나와요."
         case .notConfigured:
             kakaoAlert = "카카오 설정이 필요해요."
         case .failed(let reason):
