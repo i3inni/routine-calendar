@@ -1,8 +1,8 @@
 # 02 — 설정 레이어 (config/)
 
-> [← 01 빌드 & 설정](01-build-and-config.md) · [목차](README.md) · 다음: [03 보안 & JWT →](03-security-jwt.md)
+> [← 01 빌드 & 설정](01-build-and-config.md) · 다음: [03 보안 & JWT →](03-security-jwt.md)
 
-대상 파일: `config/JwtProperties.java`, `KakaoProperties.java`, `AuthProperties.java`, `push/ApnsProperties.java`, `config/AsyncConfig.java`, `config/SecurityConfig.java`
+대상 파일: `config/`의 `JwtProperties`, `KakaoProperties`, `AppleProperties`, `AuthProperties`, `ApnsProperties`, `AdminProperties`, `AsyncConfig`, `SecurityConfig`
 
 ---
 
@@ -27,12 +27,14 @@ public record JwtProperties(String secret, long accessTokenValidity, long refres
 | `KakaoProperties` | `app.kakao` | userInfoUri |
 | `AppleProperties` | `app.apple` | clientId (= 앱 번들ID, 애플 토큰 `aud` 검증 기준 — [06](06-auth-kakao.md)) |
 | `AuthProperties` | `app.auth` | devLoginEnabled |
-| `PokeProperties` | `app.poke` | cooldownSeconds (콕 쿨다운 — [08](08-poke.md)) |
+| `AdminProperties` | `app.admin` | key (관리자 피드백 페이지 가드 — [15](15-web-public-endpoints.md)) |
 | `ApnsProperties` | `app.apns` | enabled, useSandbox, teamId, keyId, bundleId, privateKey |
 
 이 record들은 [01](01-build-and-config.md)에서 본 `@ConfigurationPropertiesScan` 덕에 자동으로 빈 등록되어, 필요한 곳에 생성자 주입된다.
 
-> **설계 결정**: 처음엔 `PokeProperties`/`ApnsProperties`를 각 feature 패키지에 뒀지만, 패키지를 계층(controller/service/...)으로 나누면서 **설정은 도메인 계층이 아니라 인프라**라고 보고 전부 `config/`로 모았다. 모든 `@ConfigurationProperties`가 한곳에 있어 설정 추적이 쉽다.
+> 참고: 자극하기 쿨다운은 한때 `PokeProperties`(`app.poke.cooldown-seconds`)였으나, 정책이 "2회/30분"으로 고정되면서 [08](08-poke.md)의 **코드 상수**로 옮겨 별도 Properties를 두지 않는다.
+
+> **설계 결정**: 처음엔 `ApnsProperties` 등을 각 feature 패키지에 뒀지만, 패키지를 계층(controller/service/...)으로 나누면서 **설정은 도메인 계층이 아니라 인프라**라고 보고 전부 `config/`로 모았다. 모든 `@ConfigurationProperties`가 한곳에 있어 설정 추적이 쉽다.
 
 ---
 
@@ -81,9 +83,11 @@ public class SecurityConfig {
 ```java
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/api/ping", "/actuator/health").permitAll()
+                .requestMatchers("/.well-known/**", "/add-friend", "/privacy", "/support").permitAll()
+                .requestMatchers("/admin/**").permitAll()    // 화면은 열고 ADMIN_KEY로 가드(15)
                 .anyRequest().authenticated())
 ```
-- 인가 규칙: `/auth/**`(로그인), 핑, 헬스는 **누구나(permitAll)**. 그 외 모든 요청은 **인증 필요(authenticated)**.
+- 인가 규칙: 로그인/핑/헬스 + 공개 웹페이지([15](15-web-public-endpoints.md): AASA·친구추가 폴백·약관·지원·관리자)는 **누구나(permitAll)**. 그 외 모든 요청은 **인증 필요(authenticated)**.
 
 ```java
             .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedEntryPoint()))

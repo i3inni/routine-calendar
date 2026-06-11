@@ -1,10 +1,10 @@
 # 11 — push 도메인 (APNs 푸시)
 
-> [← 10 device 도메인](10-device.md) · [목차](README.md) · 다음: [12 DB 스키마 →](12-database-schema.md)
+> [← 10 device 도메인](10-device.md) · 다음: [12 DB 스키마 →](12-database-schema.md)
 
-대상 파일: `push/ApnsProperties.java`, `PushEventListener.java`, `PushService.java`, `ApnsClient.java`
+대상 파일: `config/ApnsProperties.java`, `push/service/`(`PushEventListener`, `PushService`, `ApnsClient`)
 
-**설계의 백미**: "콕/친구요청 발생 → 상대에게 푸시"를 **도메인 이벤트 + AFTER_COMMIT + @Async** 로 본 트랜잭션과 분리한다. 면접에서 강하게 어필할 수 있는 부분.
+**설계의 백미**: "친구요청/수락/자극 발생 → 상대에게 푸시"를 **도메인 이벤트 + AFTER_COMMIT + @Async** 로 본 트랜잭션과 분리한다. 면접에서 강하게 어필할 수 있는 부분.
 
 ---
 
@@ -23,18 +23,24 @@ public record ApnsProperties(boolean enabled, boolean useSandbox, String teamId,
 ```java
 @Component
 public class PushEventListener {
-    @Async
-    @TransactionalEventListener
-    public void onPoke(PokeEvent event) {
-        pushService.sendToUser(event.toUserId(), event.fromNickname() + "님이 콕 찔렀어요", "함께 루틴 해요");
-    }
-    @Async
-    @TransactionalEventListener
+    @Async @TransactionalEventListener
     public void onFriendRequested(FriendRequestedEvent event) {
-        pushService.sendToUser(event.toUserId(), "새 친구 요청", event.fromNickname() + "님이 친구 요청을 보냈어요");
+        pushService.sendToUser(event.toUserId(),
+                "새 친구 요청", event.fromNickname() + "님이 친구 요청을 보냈어요", "friend");
+    }
+    @Async @TransactionalEventListener
+    public void onFriendAccepted(FriendRequestAcceptedEvent event) {
+        pushService.sendToUser(event.toUserId(),
+                "친구 요청 수락", event.accepterNickname() + "님이 친구 요청을 수락했어요", "friend");
+    }
+    @Async @TransactionalEventListener
+    public void onFriendNudged(FriendNudgedEvent event) {
+        pushService.sendToUser(event.toUserId(),
+                event.fromNickname() + "님의 자극", event.message(), "nudge");
     }
 }
 ```
+- 마지막 인자 **`type`** 은 페이로드에 실리는 커스텀 키. 앱은 `userInfo["type"]`로 분기 — `"friend"`면 **친구목록 자동 갱신**(폴링 없이 변화 시 1회), `"nudge"`면 자극 알림만.
 
 ### `@TransactionalEventListener` (기본 단계 = AFTER_COMMIT)
 - `publishEvent`를 호출한 트랜잭션이 **성공적으로 커밋된 뒤에만** 이 리스너가 실행된다.
@@ -47,21 +53,24 @@ public class PushEventListener {
 ### 두 효과의 조합
 > **"커밋된 사실에 대해서만, 응답과 무관하게 백그라운드로"** 알림. 트랜잭션·응답성·정합성을 모두 챙김.
 
-이벤트 발행처: [07 friend](07-friend.md)의 `sendRequest`, [08 poke](08-poke.md)의 `poke`.
+이벤트 발행처: [07 friend](07-friend.md)의 `sendRequest`/`acceptRequest`, [08 자극하기](08-poke.md)의 `nudge`.
 
 ---
 
 ## `PushService.java` — 유저의 모든 기기로 발송 + 토큰 정리
 
 ```java
+    public void sendToUser(Long userId, String title, String body) {            // type 없는 오버로드
+        sendToUser(userId, title, body, null);
+    }
     @Transactional
-    public void sendToUser(Long userId, String title, String body) {
+    public void sendToUser(Long userId, String title, String body, String type) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return;
         List<DeviceToken> tokens = deviceTokenRepository.findByUser(user);
         if (tokens.isEmpty()) { log.info("등록된 기기 없음 — userId={}", userId); return; }
         for (DeviceToken dt : tokens) {
-            SendResult result = apnsClient.send(dt.getToken(), title, body);
+            SendResult result = apnsClient.send(dt.getToken(), title, body, type);
             if (result == SendResult.UNREGISTERED) deviceTokenRepository.delete(dt);
         }
     }
@@ -91,7 +100,10 @@ public class ApnsClient {
 - `ObjectMapper`: Jackson JSON 직렬화기(스프링이 빈 제공). 페이로드 생성에 사용.
 
 ```java
-    public SendResult send(String deviceToken, String title, String body) {
+    public SendResult send(String deviceToken, String title, String body) {     // type 없는 오버로드
+        return send(deviceToken, title, body, null);
+    }
+    public SendResult send(String deviceToken, String title, String body, String type) {
         if (!props.enabled()) {
             log.info("[APNs 비활성] '{}' / '{}' → token {}…", title, body, preview(deviceToken));
             return SendResult.SUCCESS;
@@ -100,55 +112,53 @@ public class ApnsClient {
 - **enabled=false면 실제 발송 없이 로그만** 찍고 성공 반환 → 키 없이 전체 흐름(이벤트→리스너→발송)을 검증 가능. (개발 단계 핵심 장치)
 
 ```java
-        String payload = objectMapper.writeValueAsString(Map.of(
-                "aps", Map.of("alert", Map.of("title", title, "body", body), "sound", "default")));
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl() + "/3/device/" + deviceToken))
-                .header("authorization", "bearer " + providerToken())
-                .header("apns-topic", props.bundleId())
-                .header("apns-push-type", "alert")
-                .header("apns-priority", "10")
-                .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
-                .build();
-        HttpResponse<String> res = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-```
-- APNs 표준 페이로드: `{"aps":{"alert":{"title","body"},"sound":"default"}}`.
-- 엔드포인트 `/3/device/{토큰}`, 헤더 `apns-topic`=앱 번들ID, `apns-push-type=alert`, `apns-priority=10`(즉시).
-- 인증은 **프로바이더 JWT**(아래).
+        Map<String, Object> root = new HashMap<>();
+        root.put("aps", Map.of("alert", Map.of("title", title, "body", body), "sound", "default"));
+        if (type != null) root.put("type", type);          // 앱이 userInfo["type"]로 분기
+        String payload = objectMapper.writeValueAsString(root);
 
-```java
+        // 1차: 설정된 환경으로 발송
+        boolean sandbox = props.useSandbox();
+        HttpResponse<String> res = postToApns(sandbox, deviceToken, payload);
         if (res.statusCode() == 200) return SendResult.SUCCESS;
-        if (res.statusCode() == 410
-                || res.body().contains("Unregistered")
-                || res.body().contains("BadDeviceToken")
-                || res.body().contains("BadEnvironmentKeyInToken")     // sandbox↔production 불일치
-                || res.body().contains("DeviceTokenNotForTopic")) {    // 다른 앱(번들ID)의 토큰
-            log.info("APNs 폐기 토큰 {}…: {}", preview(deviceToken), res.body());
+
+        // 환경 불일치(sandbox↔production)면 반대 환경으로 1회 재시도
+        if (isEnvironmentMismatch(res)) {
+            res = postToApns(!sandbox, deviceToken, payload);
+            if (res.statusCode() == 200) return SendResult.SUCCESS;
+        }
+
+        // 앱 삭제로 죽은 토큰만 폐기. (환경/토픽 문제는 토큰 유지)
+        if (res.statusCode() == 410 || res.body().contains("Unregistered")) {
             return SendResult.UNREGISTERED;   // → PushService가 토큰 삭제
         }
-        log.warn("APNs 실패 status={} body={}", res.statusCode(), res.body());
         return SendResult.FAILED;
     } catch (Exception e) { log.warn("APNs 전송 예외", e); return SendResult.FAILED; }
 ```
-- 200=성공, **못 쓰는 토큰**(410/Unregistered/BadDeviceToken/BadEnvironmentKeyInToken/DeviceTokenNotForTopic)=삭제 대상, 그 외=실패.
+- 페이로드: `{"aps":{"alert":{"title","body"},"sound":"default"}, "type":"friend"?}`. `type`은 있을 때만 최상위에 추가(`HashMap`을 써야 선택적 추가 가능 — `Map.of`는 불변).
+- 발송은 **`postToApns(sandbox, …)`** 헬퍼로 위임: 엔드포인트 `/3/device/{토큰}`, 헤더 `apns-topic`=번들ID, `apns-push-type=alert`, `apns-priority=10`, 인증=**프로바이더 JWT**(아래).
 - **푸시 실패가 예외로 위로 전파되지 않게** catch로 흡수(비동기라 응답엔 영향 없지만 안전).
-- **자가 정리(self-cleaning)**: 죽은 토큰을 `UNREGISTERED`로 표시 → `PushService`가 DB에서 삭제 → 낡은/잘못된 토큰이 쌓이지 않음.
 
-### ⚠️ sandbox vs production — 알림 도착의 핵심
-알림 도착 여부는 **받는 기기의 APNs 환경**에만 달려 있다(보내는 쪽 무관).
+### ⚠️ sandbox vs production — 환경 자동 폴백
+알림 도착 여부는 **받는 기기의 APNs 환경**에 달려 있다(보내는 쪽 무관).
 
-| 받는 앱 설치 방식 | 기기 토큰 환경 | `APNS_SANDBOX` |
-|---|---|---|
-| Xcode로 직접 Run | development(sandbox) | `true` |
-| TestFlight / App Store | production | `false` |
+| 받는 앱 설치 방식 | 기기 토큰 환경 |
+|---|---|
+| Xcode로 직접 Run | development(sandbox) |
+| TestFlight / App Store | production |
 
-- 환경이 어긋나면 `BadDeviceToken`(prod 토큰을 sandbox로) 또는 `BadEnvironmentKeyInToken`(sandbox 토큰을 prod로)이 뜨고 위 로직이 토큰을 폐기한다. → **서버 `APNS_SANDBOX`를 받는 기기 환경에 맞춰야** 함.
+- 과거엔 환경이 어긋나면 토큰을 폐기했지만, 지금은 **`isEnvironmentMismatch`**(`BadEnvironmentKeyInToken`/`BadDeviceToken`)면 **반대 환경으로 1회 자동 재시도**한다 → 개발/TestFlight 토큰이 섞여 있어도 알아서 도달. 설정값(`APNS_SANDBOX`)은 1차 시도 환경일 뿐.
+- **토큰은 410/Unregistered(앱 삭제)일 때만 폐기**. 환경·토픽 문제로는 토큰을 지우지 않는다(자동 재시도가 처리).
 - 토큰은 **로그인 + 알림 권한 허용** 시 앱 실행 때 `POST /me/device-token`으로 (재)등록된다.
 
 ```java
-    private String baseUrl() { return props.useSandbox() ? "https://api.sandbox.push.apple.com" : "https://api.push.apple.com"; }
+    private HttpResponse<String> postToApns(boolean sandbox, String deviceToken, String payload) { ... }
+    private boolean isEnvironmentMismatch(HttpResponse<String> res) {
+        String b = res.body();
+        return b != null && (b.contains("BadEnvironmentKeyInToken") || b.contains("BadDeviceToken"));
+    }
 ```
-- 개발 빌드(sandbox)와 운영 빌드의 APNs 서버가 다름 → 설정으로 전환.
+- `postToApns`: 환경에 맞는 base URL(`api.sandbox.push.apple.com` / `api.push.apple.com`)로 1회 발송. 1차/재시도가 같은 코드를 공유.
 
 ```java
     private synchronized String providerToken() throws Exception {

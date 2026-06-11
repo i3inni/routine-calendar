@@ -1,9 +1,9 @@
 # 06 — auth 도메인 (카카오/애플 로그인 + JWT)
 
-> [← 05 user 도메인](05-user.md) · [목차](README.md) · 다음: [07 friend 도메인 →](07-friend.md)
+> [← 05 user 도메인](05-user.md) · 다음: [07 friend 도메인 →](07-friend.md)
 
 대상 파일 (`auth/`는 `controller/`·`service/`·`dto/`로 분리됨):
-`dto/AuthDtos.java`, `dto/KakaoUserResponse.java`, `service/KakaoApiClient.java`, `service/AppleTokenVerifier.java`, `service/AuthService.java`, `controller/AuthController.java`
+`dto/AuthDtos.java`, `dto/KakaoUserResponse.java`, `dto/KakaoFriendsResponse.java`, `service/KakaoApiClient.java`, `service/AppleTokenVerifier.java`, `service/AuthService.java`, `controller/AuthController.java`
 
 **소셜 로그인 두 가지를 지원**하며 둘 다 모바일용 **토큰 교환** 방식이다(웹 OAuth 리다이렉트 아님).
 - **카카오**: 앱이 카카오 SDK로 액세스토큰 획득 → 서버가 카카오 API로 내 정보 조회(검증 겸) → 우리 JWT 발급.
@@ -84,6 +84,22 @@ public class KakaoApiClient {
 - 클라이언트가 준 **카카오 액세스토큰을 그대로 헤더에 실어** 카카오에 내 정보 요청.
 - **이 호출 자체가 토큰 검증**: 토큰이 틀리면 카카오가 401 → `onStatus`로 잡아 `INVALID_KAKAO_TOKEN`으로 변환. (서버가 카카오 시크릿을 들고 별도 검증할 필요 없음)
 - `.body(KakaoUserResponse.class)`: 응답 JSON을 그 타입으로 역직렬화해 반환.
+
+```java
+    // 카카오 친구찾기(07): 내 카톡 친구 중 앱 가입자 매칭용 — kakaoId → 카톡 표시이름 맵
+    public Map<Long, String> fetchFriends(String kakaoAccessToken) {
+        KakaoFriendsResponse res = restClient.get().uri(FRIENDS_URI)
+                .header(AUTHORIZATION, "Bearer " + kakaoAccessToken)
+                .retrieve()
+                .onStatus(s -> s.value() == 401, ... INVALID_KAKAO_TOKEN)
+                .onStatus(s -> s.value() == 403, ... KAKAO_FRIENDS_CONSENT_REQUIRED)  // friends 미동의
+                .body(KakaoFriendsResponse.class);
+        // elements[].id → profile_nickname 맵으로
+    }
+```
+- 카카오 `GET /v1/api/talk/friends`. 각 친구의 `id`(회원번호)와 `profile_nickname`(카톡 표시 이름)을 받아 맵으로.
+- **403 → `KAKAO_FRIENDS_CONSENT_REQUIRED`**: 토큰에 friends 동의가 없을 때. `friends`는 **검수 전엔 팀원만 동의 가능**한 고급 권한이라, 검수 통과 전 일반 사용자는 이 403을 받는다.
+- `KakaoFriendsResponse`: `elements[]`(id, profile_nickname)만 매핑한 DTO(`@JsonIgnoreProperties`). 이 결과를 친구 도메인의 `KakaoFriendMatcher`가 받아 앱 가입자와 매칭([07 카카오 친구찾기](07-friend.md)).
 
 ---
 

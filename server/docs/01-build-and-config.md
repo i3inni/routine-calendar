@@ -1,6 +1,6 @@
 # 01 — 빌드 & 설정
 
-> [← 00 핵심 개념](00-core-concepts.md) · [목차](README.md) · 다음: [02 설정 레이어 →](02-config-layer.md)
+> [← 00 핵심 개념](00-core-concepts.md) · 다음: [02 설정 레이어 →](02-config-layer.md)
 
 대상 파일: `build.gradle`, `src/main/resources/application.yml`, `RoutineCalendarServerApplication.java`
 

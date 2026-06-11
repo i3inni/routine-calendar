@@ -1,30 +1,29 @@
 # 15 — web 공개 엔드포인트 & 출시 준비
 
-> [← 14 요청 흐름](14-request-lifecycle.md) · [목차](README.md)
+> [← 14 요청 흐름](14-request-lifecycle.md)
 
-대상 파일: `web/ConfigController.java`, `web/WellKnownController.java`, `web/PrivacyController.java`, `web/SupportController.java`
+대상 파일: `web/HealthController.java`, `web/WellKnownController.java`, `web/PrivacyController.java`, `web/SupportController.java`, `web/AdminController.java`
 
-인증 없이 접근하는 **공개 엔드포인트**들. 클라이언트 설정 제공, iOS Universal Links 연결, App Store 제출에 필요한 법적 페이지를 담당한다.
+인증 없이 접근하는 **공개 엔드포인트**들. 헬스체크, iOS Universal Links 연결, App Store 제출에 필요한 법적 페이지, 관리자 피드백 조회를 담당한다.
 모두 [02 SecurityConfig](02-config-layer.md)의 `permitAll`에 등록돼 토큰 없이 열린다.
 
 ```java
-.requestMatchers("/auth/**", "/api/ping", "/actuator/health", "/config").permitAll()
+.requestMatchers("/auth/**", "/api/ping", "/actuator/health").permitAll()
 .requestMatchers("/.well-known/**", "/add-friend", "/privacy", "/support").permitAll()
+.requestMatchers("/admin/**").permitAll()   // 화면 진입은 열고, 내부에서 ADMIN_KEY로 가드
 ```
+
+> 참고: 옛 `/config`(콕 쿨다운 값 제공)는 **제거**됐다. 자극하기 쿨다운이 서버 환경변수가 아니라 **코드 상수**(2회/30분)로 바뀌었고, 남은 횟수·리셋 시각은 친구목록 응답(`nudgeRemaining`/`nudgeResetAtMs`, [07](07-friend.md))에 직접 실려 내려가기 때문.
 
 ---
 
-## 1. `ConfigController` — 클라이언트 설정 제공
+## 1. `HealthController` — 헬스체크
 
 ```java
-@GetMapping("/config")
-public Map<String, Object> config() {
-    return Map.of("pokeCooldownSeconds", pokeProperties.cooldownSeconds());
-}
+@GetMapping("/api/ping")
+public Map<String, String> ping() { return Map.of("status", "ok"); }
 ```
-- **왜?**: 콕 쿨다운은 **서버 환경변수**([08 poke](08-poke.md))로 정하는데, 앱이 "X분 후 다시 가능" 같은 안내를 **그 값에 맞춰** 보여주려면 서버 값을 알아야 한다.
-- 앱은 진입 시 `/config`를 받아 쿨다운 표시에 사용 → 서버가 값을 바꾸면 앱도 따라옴(하드코딩 불일치 제거).
-- 비밀이 아니라 **인증 불필요**. `Map`을 반환하면 `{ "pokeCooldownSeconds": 3600 }` JSON으로 직렬화.
+- 배포/로드밸런서가 서버 생존을 확인하는 가벼운 엔드포인트. 인증 불필요. (`/actuator/health`도 permitAll)
 
 ---
 
@@ -66,6 +65,20 @@ public String support() { return "<!doctype html>...FAQ + 문의 이메일..."; 
 
 ---
 
+## 4. `AdminController` — 관리자 피드백 조회
+
+```java
+@GetMapping(value = "/admin/feedback", produces = MediaType.TEXT_HTML_VALUE)
+public String feedback(@RequestParam(required = false) String key) {
+    if (!adminProperties.key().equals(key)) return "<h1>403</h1>";   // ADMIN_KEY 가드
+    // feedbackRepository.findAll(최신순) → HTML 표로 렌더
+}
+```
+- 사용자 피드백([feedback 도메인](17-feedback.md), `POST /feedback`)을 **운영자가 브라우저로 한눈에** 보는 페이지.
+- 경로는 `permitAll`이지만 **쿼리파라미터 `key`가 `ADMIN_KEY`(env)와 일치해야** 내용을 보여준다 → 별도 로그인 화면 없이 단순 가드.
+
+---
+
 ## 출시 준비 체크리스트 (서버 관점)
 
 | 항목 | 엔드포인트/설정 |
@@ -73,10 +86,11 @@ public String support() { return "<!doctype html>...FAQ + 문의 이메일..."; 
 | 개인정보 처리방침 URL | `/privacy` |
 | 지원 URL | `/support` |
 | Universal Links 연결 | `/.well-known/apple-app-site-association` |
-| 클라이언트 설정 | `/config` |
-| 운영 보안값 | `DEV_LOGIN_ENABLED=false`, `JWT_SECRET`(랜덤), `APNS_SANDBOX`(빌드에 맞게) |
+| 헬스체크 | `/api/ping`, `/actuator/health` |
+| 관리자 피드백 조회 | `/admin/feedback?key=…` |
+| 운영 보안값 | `DEV_LOGIN_ENABLED=false`, `JWT_SECRET`(랜덤), `APNS_SANDBOX`(빌드에 맞게), `ADMIN_KEY` |
 | 계정 삭제 제공 | `DELETE /me` (App Store 5.1.1 요건) |
 
 ---
 
-> [목차로 →](README.md)
+> 다음: [16 routine 도메인 →](16-routine.md)

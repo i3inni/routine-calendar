@@ -1,8 +1,8 @@
 # 13 — 테스트
 
-> [← 12 DB 스키마](12-database-schema.md) · [목차](README.md) · 다음: [14 요청 흐름 + 셀프체크 →](14-request-lifecycle.md)
+> [← 12 DB 스키마](12-database-schema.md) · 다음: [14 요청 흐름 + 셀프체크 →](14-request-lifecycle.md)
 
-대상 파일: `src/test/java/.../security/JwtTokenProviderTest.java`, `RoutineCalendarServerApplicationTests.java`
+대상 파일: `src/test/java/.../security/JwtTokenProviderTest.java`, `friend/service/FriendServiceTest.java`, `routine/service/RoutineServiceTest.java`, `RoutineCalendarServerApplicationTests.java`
 
 ---
 
@@ -46,6 +46,27 @@ JWT는 **인증의 신뢰 기반**이라 여기가 뚫리면 전부 무너진다
 
 ---
 
+## `FriendServiceTest.java` / `RoutineServiceTest.java` — Mockito 단위 테스트
+
+```java
+@ExtendWith(MockitoExtension.class)
+class RoutineServiceTest {
+    @Mock RoutineRepository routineRepository;
+    @InjectMocks RoutineService routineService;
+    ...
+}
+```
+- **`@ExtendWith(MockitoExtension.class)`**: 스프링 컨텍스트 없이 **Mock 의존성**만 주입해 서비스 로직을 빠르게 검증. `@Mock`(가짜 레포)·`@InjectMocks`(대상 서비스).
+- **`FriendServiceTest`** — 자극하기([08](08-poke.md)) 핵심 분기:
+  - `친구를_자극하면_기록을_남기고_이벤트가_발행된다` — `Poke` 저장 + `FriendNudgedEvent` 발행 검증(`verify`).
+  - `친구가_아니면_자극할_수_없고_이벤트도_발행되지_않는다` — `NOT_FRIEND` 예외 + 이벤트 미발행.
+  - `쿨다운_한도를_넘으면_자극할_수_없다` — 30분 2회 초과 시 `NUDGE_COOLDOWN`.
+- **`RoutineServiceTest`** — 루틴 동기화([16 routine](16-routine.md)) **소유권·upsert**:
+  - 생성→내 소유 저장, **남의 루틴 수정 차단**(조회 쿼리에 `user`를 박아 `ROUTINE_NOT_FOUND`), **삭제는 soft delete**, 완료 카운트 **있으면 갱신/없으면 생성**(upsert).
+- Mockito 패턴: `when(...).thenReturn(...)`으로 레포 응답을 짜고, `verify(...)`로 저장/이벤트 호출을 확인. DB 없이 분기 로직만 빠르게.
+
+---
+
 ## `RoutineCalendarServerApplicationTests.java` — 스모크 테스트
 
 ```java
@@ -62,9 +83,9 @@ class RoutineCalendarServerApplicationTests {
 
 ## 더 작성한다면 (학습 확장)
 
-- `@DataJpaTest` + Testcontainers(Postgres)로 레포지토리 쿼리(특히 `findAllOf` fetch join, 부분 유니크 인덱스 동작) 검증.
+- `@DataJpaTest` + Testcontainers(Postgres)로 레포지토리 쿼리(특히 `findAllOf` fetch join, 부분 유니크 인덱스, `findNudgeStats` group by) 검증.
 - `@WebMvcTest` + `@MockBean`으로 컨트롤러 단위 테스트(검증 실패 400, 인증 없을 때 401).
-- `FriendService`의 분기(자기자신/이미친구/역방향 자동성사/중복요청)를 Mockito로.
+- `FriendService`의 친구요청 분기(자기자신/이미친구/역방향 자동성사/중복요청)·카카오 친구찾기 매칭을 Mockito로 확장.
 
 ---
 

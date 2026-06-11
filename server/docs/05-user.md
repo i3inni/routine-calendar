@@ -1,10 +1,10 @@
 # 05 — user 도메인
 
-> [← 04 글로벌 예외 처리](04-error-handling.md) · [목차](README.md) · 다음: [06 auth 카카오 로그인 →](06-auth-kakao.md)
+> [← 04 글로벌 예외 처리](04-error-handling.md) · 다음: [06 auth 카카오 로그인 →](06-auth-kakao.md)
 
-대상 파일: `user/User.java`, `UserRepository.java`, `UserService.java`, `UserResponse.java`, `MeController.java`
+대상 파일: `user/domain/User.java`, `user/repository/UserRepository.java`, `user/service/`(`UserService`, `UserPurgeScheduler`), `user/dto/`(`UserResponse`, `MeDtos`), `user/controller/MeController.java`
 
-신원은 카카오 로그인으로 잡고, 친구추가는 공개 `handle`로 검색한다.
+신원은 **카카오 또는 애플** 로그인으로 잡고(둘 중 하나로 식별), 친구추가는 공개 `handle`로 검색한다.
 
 ---
 
@@ -31,17 +31,22 @@ public class User {
 - **`@GeneratedValue(IDENTITY)`**: PK 생성을 **DB의 자동증가(Postgres IDENTITY)** 에 위임. INSERT 시 DB가 채워주고 그 값을 다시 받아온다.
 
 ```java
-    @Column(name = "kakao_id", nullable = false, unique = true)
+    @Column(name = "kakao_id", unique = true)            // 애플 전용 유저면 null
     private Long kakaoId;
+    @Column(name = "apple_id", unique = true, length = 255)  // 카카오 전용 유저면 null
+    private String appleId;
     @Column(nullable = false, unique = true, length = 30)
     private String handle;
     @Column(nullable = false, length = 50)
     private String nickname;
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
+    @Column(name = "deletion_requested_at")              // null = 정상 계정
+    private Instant deletionRequestedAt;
 ```
-- **`@Column`**: 컬럼 매핑. `name`(컬럼명), `nullable=false`(NOT NULL), `unique`(유니크), `length`(VARCHAR 길이).
-- `kakaoId`: 카카오 회원번호(신원). `handle`: 친구추가용 공개 ID(유니크).
+- **`@Column`**: 컬럼 매핑. `name`(컬럼명), `nullable`(기본 true), `unique`(유니크), `length`(VARCHAR 길이).
+- **신원은 `kakaoId` 또는 `appleId` 둘 중 하나**(둘 다 nullable + unique). 카카오/애플 어느 쪽으로 가입해도 한 행. (애플 로그인 추가는 [12 V2 마이그레이션](12-database-schema.md))
+- `handle`: 친구추가용 공개 ID(유니크). `deletionRequestedAt`: 계정 삭제 유예(아래).
 
 ```java
     @CreationTimestamp
@@ -57,17 +62,19 @@ public class User {
 
 ```java
     @Builder
-    public User(Long kakaoId, String handle, String nickname, String profileImageUrl) { ... }
+    public User(Long kakaoId, String appleId, String handle, String nickname, String profileImageUrl) { ... }
 ```
 - **`@Builder`**(롬복): `User.builder().kakaoId(..).handle(..)...build()` 빌더 패턴. 인자가 많을 때 가독성↑, 순서 실수↓. id/타임스탬프는 자동 생성이라 빌더 대상에서 제외.
 
 ```java
-    public void updateProfile(String nickname, String profileImageUrl) {
-        this.nickname = nickname;
-        this.profileImageUrl = profileImageUrl;
-    }
+    public void updateProfile(String nickname, String profileImageUrl) { ... }
+    public void updateNickname(String nickname) { ... }
+    public void linkKakao(Long kakaoId)  { this.kakaoId = kakaoId; }          // 애플 계정에 카카오 연동(친구찾기)
+    public void requestDeletion()        { this.deletionRequestedAt = Instant.now(); }  // 삭제 예약
+    public void cancelDeletion()         { this.deletionRequestedAt = null; }           // 재로그인 시 취소
 ```
-- 상태 변경을 **의미 있는 도메인 메서드**로 노출. 트랜잭션 안에서 호출하면 dirty checking으로 UPDATE([00 핵심개념](00-core-concepts.md) 참고).
+- 상태 변경을 **의미 있는 도메인 메서드**로만 노출(setter 없음). 트랜잭션 안에서 호출하면 dirty checking으로 UPDATE([00 핵심개념](00-core-concepts.md) 참고).
+- `linkKakao`: 애플로 가입한 유저가 카카오 친구찾기([07](07-friend.md))를 쓸 때 `kakaoId`를 채워 넣는다.
 
 ---
 
@@ -76,14 +83,17 @@ public class User {
 ```java
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByKakaoId(Long kakaoId);
+    List<User> findByKakaoIdIn(Collection<Long> kakaoIds);          // 카카오 친구찾기 매칭(07)
+    Optional<User> findByAppleId(String appleId);                   // 애플 로그인
     Optional<User> findByHandle(String handle);
     boolean existsByHandle(String handle);
+    List<User> findByDeletionRequestedAtBefore(Instant cutoff);     // 영구삭제 대상(스케줄러)
 }
 ```
 - **`JpaRepository<User, Long>`**: 엔티티=User, PK타입=Long. 상속만 해도 `save/findById/findAll/delete...` 기본 CRUD가 공짜.
 - **쿼리 메서드**: 메서드 이름을 규칙대로 지으면 Spring Data가 **이름을 파싱해 SQL을 자동 생성**.
-  - `findByKakaoId` → `WHERE kakao_id = ?`
-  - `existsByHandle` → `SELECT count > 0 ... WHERE handle = ?`
+  - `findByKakaoId` → `WHERE kakao_id = ?`, `findByKakaoIdIn` → `WHERE kakao_id IN (?)`
+  - `findByAppleId` → `WHERE apple_id = ?`, `findByDeletionRequestedAtBefore` → `WHERE deletion_requested_at < ?`
 - `Optional<User>`: 결과가 없을 수 있음을 타입으로 표현(NPE 방지). `.orElseThrow(...)`로 처리.
 - 구현 클래스를 우리가 안 짠다 → 스프링이 런타임에 프록시 구현체를 만들어 빈 등록.
 

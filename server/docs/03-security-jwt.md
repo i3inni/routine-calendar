@@ -1,6 +1,6 @@
 # 03 — 보안 & JWT (security/)
 
-> [← 02 설정 레이어](02-config-layer.md) · [목차](README.md) · 다음: [04 글로벌 예외 처리 →](04-error-handling.md)
+> [← 02 설정 레이어](02-config-layer.md) · 다음: [04 글로벌 예외 처리 →](04-error-handling.md)
 
 대상 파일: `security/JwtTokenProvider.java`, `security/JwtAuthenticationFilter.java`
 

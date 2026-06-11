@@ -1,10 +1,10 @@
 # 09 — summary 도메인 (오늘 루틴 요약)
 
-> [← 08 poke 도메인](08-poke.md) · [목차](README.md) · 다음: [10 device 도메인 →](10-device.md)
+> [← 08 자극하기](08-poke.md) · 다음: [10 device 도메인 →](10-device.md)
 
-대상 파일: `summary/DailySummary.java`, `DailySummaryRepository.java`, `SummaryService.java`, `SummaryController.java`, `SummaryDtos.java`
+대상 파일: `summary/`의 `DailySummary`, `DailySummaryRepository`, `SummaryService`, `SummaryController`, `SummaryDtos`
 
-루틴 **원본은 기기에만** 있고, 서버엔 **친구 공유용 요약**(오늘 완료/남은 루틴 이름 + 진행률 + 연속일)만 올라온다. → 개인정보 최소 수집.
+`daily_summaries`는 **친구에게 보여줄 오늘치 스냅샷**(완료/남은 루틴 이름 + 진행률 + 연속일)이다. 루틴 원본([16 routine](16-routine.md))이 서버에 동기화된 뒤에도, 친구 목록을 한 번에 빠르게 그리기 위한 **비정규화된 읽기 모델**로 따로 둔다(친구 N명 조회 시 각자의 루틴/완료를 조인하지 않고 이 한 행만 IN으로).
 
 ---
 

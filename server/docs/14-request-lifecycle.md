@@ -1,36 +1,36 @@
 # 14 — 요청 1건의 전체 흐름 + 면접 셀프체크
 
-> [← 13 테스트](13-testing.md) · [목차](README.md)
+> [← 13 테스트](13-testing.md)
 
 앞 문서들에서 본 조각들이 **요청 한 번**에 어떻게 맞물리는지 종합한다.
 
 ---
 
-## 예: 콕 찌르기 `POST /pokes`
+## 예: 자극하기 `POST /me/friends/{userId}/nudge`
 
-요청: `POST /pokes` · 헤더 `Authorization: Bearer <access토큰>` · 본문 `{ "toUserId": 7 }`
+요청: `POST /me/friends/7/nudge` · 헤더 `Authorization: Bearer <access토큰>` · 본문 `{ "message": "오늘 루틴 했어?" }`
 
 ```
 1. 톰캣이 요청 수신
 2. [SecurityFilterChain] JwtAuthenticationFilter 실행          → 03 보안 & JWT
      - 헤더에서 Bearer 토큰 추출 → parseAccessToken → userId=3 복원
      - SecurityContext에 principal=3 세팅
-3. 인가 검사: /pokes 는 인증 필요 → 인증 됐으므로 통과          → 02 SecurityConfig
-4. [DispatcherServlet] PokeController.poke 매핑                → 08 poke
-     - @RequestBody 로 JSON → PokeRequest(toUserId=7) 역직렬화
-     - @Valid → @NotNull 검증
+3. 인가 검사: /me/** 는 인증 필요 → 인증 됐으므로 통과           → 02 SecurityConfig
+4. [DispatcherServlet] FriendController.nudge 매핑             → 07 friend / 08 자극하기
+     - @PathVariable userId=7, @RequestBody → NudgeRequest(message) 역직렬화
+     - @Valid → @NotBlank @Size(max=50) 검증
      - @AuthenticationPrincipal → meId=3 주입
-5. PokeService.poke(3, 7) — @Transactional 시작              → 08 poke
+5. FriendService.nudge(3, 7, msg) — @Transactional 시작       → 08 자극하기
      - getUser(3), getUser(7)
-     - existsBetween(3,7) 친구 확인  (아니면 BusinessException(POKE_NOT_FRIEND) → 403)
-     - 최근 콕 조회 → 1시간 이내면 BusinessException(POKE_COOLDOWN) → 429
+     - existsBetween(3,7) 친구 확인  (아니면 BusinessException(NOT_FRIEND) → 403)
+     - 최근 30분 자극 횟수 ≥ 2 면 BusinessException(NUDGE_COOLDOWN) → 429
      - pokeRepository.save(new Poke(...))  → INSERT
-     - eventPublisher.publishEvent(new PokeEvent(7, "내닉네임"))   ← 아직 발송 X
+     - eventPublisher.publishEvent(new FriendNudgedEvent(7, "내닉네임", msg))  ← 아직 발송 X
    --- 트랜잭션 커밋 ---
-6. 커밋 성공 → @TransactionalEventListener(AFTER_COMMIT) onPoke 트리거  → 11 push
-     - @Async → 별도 스레드로 PushService.sendToUser(7, ...)
+6. 커밋 성공 → @TransactionalEventListener(AFTER_COMMIT) onFriendNudged 트리거  → 11 push
+     - @Async → 별도 스레드로 PushService.sendToUser(7, ..., "nudge")
      - userId=7의 모든 device_token 으로 ApnsClient.send (enabled=false면 로그만)
-     - 410/Unregistered 토큰은 삭제
+     - 환경 불일치면 반대 환경 1회 재시도 · 410/Unregistered 토큰만 삭제
 7. 컨트롤러는 void + @ResponseStatus(204) → 클라이언트에 204 No Content (푸시와 무관하게 즉시)
 
 * 중간에 BusinessException 발생 시:                          → 04 글로벌 예외 처리
@@ -64,7 +64,7 @@
   영속성 컨텍스트를 트랜잭션 범위로 한정해 커넥션 점유 시간↓, LAZY 로딩 경계를 명확히. 컨트롤러에서 LAZY 접근하면 예외 나도록 일부러. → [01](01-build-and-config.md)
 
 - **N+1은 어디서 막았나?**
-  친구 목록(`findAllOf` fetch join), 친구들 요약(`findByUserInAndSummaryDate` IN 쿼리), 받은 요청(`findIncoming` fetch join). 친구 N명이어도 쿼리 2번. → [07](07-friend.md), [09](09-summary.md)
+  친구 목록(`findAllOf` fetch join), 친구들 요약(`findByUserInAndSummaryDate` IN), 자극 통계(`findNudgeStats` group by), 받은/보낸 요청(`findIncoming`/`findOutgoing` fetch join). 친구 N명이어도 목록 쿼리 3번. → [07](07-friend.md), [08](08-poke.md), [09](09-summary.md)
 
 - **JWT access/refresh를 왜 나눴나?**
   access는 짧게(탈취 피해 최소화), refresh는 길게(자동 로그인). `type` 클레임으로 혼용 차단. → [03](03-security-jwt.md)
@@ -118,4 +118,4 @@
 
 ---
 
-축하한다. 여기까지 읽었으면 `server/`의 거의 모든 코드를 줄 단위로 이해한 것이다. 마지막으로 [15 — web 공개 엔드포인트 & 출시 준비](15-web-public-endpoints.md)까지 보면 출시 관점도 마무리된다. 약한 부분은 [목차](README.md)에서 다시.
+축하한다. 여기까지 읽었으면 `server/`의 거의 모든 코드를 줄 단위로 이해한 것이다. 마지막으로 [15 — web 공개 엔드포인트 & 출시 준비](15-web-public-endpoints.md)까지 보면 출시 관점도 마무리된다. 약한 부분은 해당 도메인 문서에서 다시.

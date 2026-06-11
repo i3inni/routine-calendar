@@ -1,6 +1,6 @@
 # 10 — device 도메인 (APNs 토큰 관리)
 
-> [← 09 summary 도메인](09-summary.md) · [목차](README.md) · 다음: [11 push 도메인 →](11-push-apns.md)
+> [← 09 summary 도메인](09-summary.md) · 다음: [11 push 도메인 →](11-push-apns.md)
 
 대상 파일: `device/DeviceToken.java`, `Platform.java`, `DeviceTokenRepository.java`, `DeviceTokenService.java`, `DeviceTokenController.java`, `DeviceTokenDtos.java`
 

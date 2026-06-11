@@ -1,8 +1,8 @@
 # 12 — DB 스키마 (Flyway)
 
-> [← 11 push 도메인](11-push-apns.md) · [목차](README.md) · 다음: [13 테스트 →](13-testing.md)
+> [← 11 push 도메인](11-push-apns.md) · 다음: [13 테스트 →](13-testing.md)
 
-대상 파일: `db/migration/V1__init.sql`, `V2__add_apple_login.sql`, `V3__add_account_deletion.sql`
+대상 파일: `db/migration/V1__init.sql`, `V2__add_apple_login.sql`, `V3__add_account_deletion.sql`, `V4__add_feedback.sql`, `V5__add_routines.sql`
 
 ---
 
@@ -79,7 +79,8 @@ CREATE TABLE pokes (
 );
 CREATE INDEX idx_poke_pair ON pokes (from_user_id, to_user_id, created_at);
 ```
-- `(from, to, created_at)` 복합 인덱스 → 쿨다운 검사(`findTopByFromUserAndToUserOrderByCreatedAtDesc`, [08 poke](08-poke.md))를 인덱스만으로 빠르게.
+- `pokes`는 "콕"에서 **자극하기(nudge)** 로 바뀐 뒤에도 같은 테이블을 재사용([08 자극하기](08-poke.md)).
+- `(from, to, created_at)` 복합 인덱스 → 쿨다운 검사(`countByFromUserAndToUserAndCreatedAtAfter`)와 친구별 집계(`findNudgeStats`)를 인덱스만으로 빠르게.
 
 ### daily_summaries
 ```sql
@@ -133,7 +134,53 @@ CREATE INDEX idx_users_deletion_requested ON users (deletion_requested_at);
 ```
 - 삭제 예약 시각 기록(soft delete). 인덱스는 스케줄러의 "유예 지난 계정" 조회(`findByDeletionRequestedAtBefore`)용. ([05 계정삭제](05-user.md))
 
-> 스키마 변경을 코드(엔티티)와 함께 **버전으로 남기니**, 어느 시점의 DB든 재현 가능. JPA는 `validate`라 V2/V3 적용 후 엔티티(`appleId`, `deletionRequestedAt`)와 일치해야 부팅됨.
+### `V4__add_feedback.sql` — 피드백/기능 요청
+```sql
+CREATE TABLE feedback (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,   -- 작성자 탈퇴해도 피드백 보존
+    content VARCHAR(2000) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_feedback_created ON feedback (created_at DESC);
+```
+- **`ON DELETE SET NULL`**(다른 테이블의 CASCADE와 대비): 유저가 탈퇴해도 피드백 내용은 남기고 작성자만 NULL로. 운영자가 피드백을 계속 보기 위함.
+- `created_at DESC` 인덱스: 관리자 피드백 조회(`/admin/feedback`)의 최신순 정렬용.
+
+### `V5__add_routines.sql` — 루틴 계정 귀속(서버 동기화)
+```sql
+CREATE TABLE routines (
+    id UUID PRIMARY KEY,                                       -- 클라이언트 생성 UUID
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(10) NOT NULL DEFAULT 'check',                 -- check / count
+    target INT NOT NULL DEFAULT 1, unit VARCHAR(20) NOT NULL DEFAULT '',
+    reminder VARCHAR(5),                                       -- "HH:MM" or null
+    anytime BOOLEAN NOT NULL DEFAULT TRUE,
+    repeat_mode VARCHAR(10) NOT NULL DEFAULT 'daily',          -- daily / weekdays / custom
+    repeat_days JSONB NOT NULL DEFAULT '[]',                   -- 0=일 … 6=토
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ                                     -- soft delete (NULL=활성)
+);
+CREATE INDEX idx_routine_user_active ON routines (user_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE routine_completions (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    routine_id UUID NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+    completion_date DATE NOT NULL, count INT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_routine_completion UNIQUE (routine_id, completion_date)
+);
+CREATE INDEX idx_completion_user ON routine_completions (user_id);
+```
+- **PK가 클라이언트 생성 `UUID`**: 오프라인에서 만든 루틴도 충돌 없이 서버와 동기화(서버 자동증가 PK를 기다릴 필요 없음).
+- **`deleted_at` soft delete + 부분 인덱스(`WHERE deleted_at IS NULL`)**: 다기기에서 삭제를 인지하도록 행을 남기되, 활성 루틴 조회는 인덱스로 빠르게.
+- `routine_completions`: **`UNIQUE(routine_id, completion_date)`** → 루틴·날짜당 한 행(완료 카운트 upsert 근거). 루틴 삭제 시 CASCADE.
+- 루틴은 원래 기기 로컬(App Group)에만 있었으나 **계정 귀속 + 기기 간 동기화**를 위해 서버를 원본 소유자로. (신규 [routine 도메인](16-routine.md) 참고)
+
+> 스키마 변경을 코드(엔티티)와 함께 **버전으로 남기니**, 어느 시점의 DB든 재현 가능. JPA는 `validate`라 각 마이그레이션 적용 후 엔티티(`appleId`, `deletionRequestedAt`, `Feedback`, `Routine`, `RoutineCompletion`)와 일치해야 부팅됨.
 
 ---
 
@@ -143,6 +190,9 @@ CREATE INDEX idx_users_deletion_requested ON users (deletion_requested_at);
 - **친구 관계 정규화** → `low<high` 한 행 + UNIQUE/CHECK로 양방향 중복 제거.
 - **부분 유니크 인덱스** → "활성 PENDING 1건만" 같은 조건부 유니크를 우아하게 표현.
 - **복합 인덱스 순서** → 조회 패턴(`WHERE addressee AND status`, 쿨다운 `from,to,created_at`)에 맞춰 컬럼 순서 설계.
+- **soft delete + 부분 인덱스** → `routines.deleted_at`으로 삭제를 다기기에 전파하면서, `WHERE deleted_at IS NULL` 부분 인덱스로 활성 조회 성능 유지.
+- **클라이언트 생성 UUID PK** → 오프라인 생성/동기화에 유리(서버 PK 의존 제거).
+- **CASCADE vs SET NULL** → 관계 데이터는 CASCADE(고아 제거), 보존할 로그성 데이터(feedback)는 SET NULL.
 
 ---
 
