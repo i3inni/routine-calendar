@@ -12,6 +12,7 @@ import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -77,6 +78,10 @@ public class Routine implements Persistable<UUID> {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /** 서버 푸시 리마인더로 오늘 평가/발송한 날짜 (하루 1회 보장). */
+    @Column(name = "last_reminded_on")
+    private LocalDate lastRemindedOn;
+
     // 할당된 UUID PK라 save() 시 insert/update를 구분하기 위한 플래그.
     @Transient
     private boolean isNew = true;
@@ -109,6 +114,20 @@ public class Routine implements Persistable<UUID> {
 
     public void markDeleted() {
         this.deletedAt = Instant.now();
+    }
+
+    /** 오늘 리마인더를 처리했다고 기록(중복 발송 방지). */
+    public void markReminded(LocalDate date) {
+        this.lastRemindedOn = date;
+    }
+
+    /** 이 루틴이 해당 요일(0=일 … 6=토)에 예정돼 있는지. (iOS isScheduled와 동일 규칙) */
+    public boolean isScheduledOn(int weekday) {
+        return switch (repeatMode) {
+            case "weekdays" -> weekday >= 1 && weekday <= 5;
+            case "custom"   -> repeatDays.contains(weekday);
+            default          -> true;   // daily
+        };
     }
 
     @Override
