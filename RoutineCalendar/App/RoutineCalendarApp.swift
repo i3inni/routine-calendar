@@ -59,6 +59,8 @@ struct RoutineCalendarApp: App {
                 }
                 // 위젯 "＋" → 루틴 추가 화면
                 if deepLink.handleIfAddRoutine(url) { return }
+                // 위젯 "자극하기" → 친구 자극 시트
+                if deepLink.handleIfNudge(url) { return }
                 // 친구추가 딥링크(routinecalendar://add-friend?id=...)
                 deepLink.handleIfFriendLink(url)
             }

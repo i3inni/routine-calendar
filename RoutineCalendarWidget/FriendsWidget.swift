@@ -35,6 +35,9 @@ struct FriendsWidgetView: View {
             Rectangle().fill(Color.rcSeparator(scheme)).frame(height: 1)
             friendList
         }
+        .padding(.horizontal, 6)
+        .padding(.top, 12)
+        .padding(.bottom, 5)
         .containerBackground(for: .widget) { Color.rcBg(scheme) }
     }
 
@@ -83,10 +86,10 @@ struct FriendsWidgetView: View {
 
     private func row(_ friend: Friend) -> some View {
         HStack(spacing: 9) {
-            Circle().fill(Color.rcCard2(scheme)).frame(width: 30, height: 30)
+            Circle().fill(Color.rcCard2(scheme)).frame(width: 28, height: 28)
                 .overlay(
                     Text(friend.initial)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12.5, weight: .semibold))
                         .foregroundStyle(Color.rcText(scheme))
                 )
             VStack(alignment: .leading, spacing: 1) {
@@ -102,8 +105,8 @@ struct FriendsWidgetView: View {
             Spacer(minLength: 0)
             trailing(friend)
         }
-        .padding(.vertical, 5).padding(.horizontal, 9)
-        .background(Color.rcCard(scheme), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.vertical, 5).padding(.horizontal, 11)
+        .background(Color.rcCard(scheme), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
     }
 
     @ViewBuilder
@@ -113,14 +116,14 @@ struct FriendsWidgetView: View {
         } else if friend.nudgeOnCooldown {
             badge("대기", color: Color.rcText3(scheme))
         } else {
-            Button(intent: NudgeFriendIntent(friendId: friend.id)) {
-                Text("자극")
+            // 위젯은 멘트 입력 불가 → 앱의 자극 시트로 이동
+            Link(destination: URL(string: "routinecalendar://nudge/\(friend.id)")!) {
+                Text("자극하기")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.rcAccentText(scheme))
                     .padding(.horizontal, 12).padding(.vertical, 5)
                     .background(Color.rcAccent(scheme), in: Capsule())
             }
-            .buttonStyle(.plain)
         }
     }
 

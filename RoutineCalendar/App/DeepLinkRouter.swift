@@ -9,6 +9,18 @@ final class DeepLinkRouter {
     var pendingFriendHandle: String?
     /// 위젯 "＋"로 들어온 루틴 추가 요청. 캘린더 화면이 소비하면 false로 되돌린다.
     var pendingAddRoutine = false
+    /// 위젯 "자극"으로 들어온 친구 id. 친구 탭에서 해당 친구 자극 시트를 연다.
+    var pendingNudgeFriendId: String?
+
+    /// 자극 딥링크(routinecalendar://nudge/FRIENDID)면 id를 세우고 true.
+    @discardableResult
+    func handleIfNudge(_ url: URL) -> Bool {
+        guard url.scheme == Self.scheme, url.host == "nudge" else { return false }
+        let id = url.lastPathComponent
+        guard !id.isEmpty, id != "nudge", id != "/" else { return false }
+        pendingNudgeFriendId = id
+        return true
+    }
 
     /// 루틴 추가 딥링크(routinecalendar://add-routine)면 플래그를 세우고 true.
     @discardableResult

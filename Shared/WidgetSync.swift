@@ -73,38 +73,14 @@ enum WidgetSync {
         return (200..<300).contains(http.statusCode)
     }
 
-    // MARK: - 친구 위젯 (현황 스냅샷 + 자극)
+    // MARK: - 친구 위젯 (현황 스냅샷)
 
-    static func loadFriends() -> [Friend] {
-        guard let data = AppGroup.defaults.data(forKey: AppGroup.friendsKey),
-              let f = try? JSONDecoder().decode([Friend].self, from: data) else { return [] }
-        return f
-    }
-
+    /// 친구 현황을 App Group에 저장(위젯이 읽어 표시). 자극은 앱 시트에서 처리.
     static func saveFriends(_ friends: [Friend]) {
         if let data = try? JSONEncoder().encode(friends) {
             AppGroup.defaults.set(data, forKey: AppGroup.friendsKey)
             AppGroup.defaults.synchronize()
         }
-    }
-
-    /// 자극 성공 시 그 친구의 남은횟수를 낙관적으로 1 감소(즉시 위젯 반영).
-    static func optimisticallyDecrementNudge(friendId: String) {
-        var friends = loadFriends()
-        guard let i = friends.firstIndex(where: { $0.id == friendId }) else { return }
-        friends[i].nudgeRemaining = max(0, friends[i].nudgeRemaining - 1)
-        if friends[i].nudgeRemaining == 0, friends[i].nudgeResetAt == nil {
-            friends[i].nudgeResetAt = Date().addingTimeInterval(30 * 60)
-        }
-        saveFriends(friends)
-    }
-
-    /// 친구 자극(POST /me/friends/{id}/nudge). 성공 시 true.
-    static func nudgeFriendOnServer(userId: String, message: String) async -> Bool {
-        guard let base = AppGroup.defaults.string(forKey: AppGroup.apiBaseURLKey) else { return false }
-        let path = "/me/friends/\(userId)/nudge"
-        let body = try? JSONSerialization.data(withJSONObject: ["message": message])
-        return await request(method: "POST", base: base, path: path, body: body, allowRefresh: true)
     }
 
     /// refresh 토큰으로 새 access/refresh 발급 → 공유 Keychain에 저장.

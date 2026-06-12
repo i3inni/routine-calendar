@@ -35,7 +35,8 @@ struct DayCellView: View {
                                 style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .frame(width: 32, height: 32)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: progress.frac)
+                        // 게이지가 차는 게 보이도록 천천히 (이전 0.35초 스프링 → ~0.6초)
+                        .animation(.easeOut(duration: 0.6), value: progress.frac)
                 }
 
                 // Date circle

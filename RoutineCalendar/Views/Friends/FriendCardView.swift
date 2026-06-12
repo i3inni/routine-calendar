@@ -4,6 +4,7 @@ struct FriendCardView: View {
     let friend: Friend
 
     @Environment(\.colorScheme) private var scheme
+    @Environment(DeepLinkRouter.self) private var deepLink
     @State private var showNudgeSheet = false
 
     private var ringFrac: Double {
@@ -121,6 +122,13 @@ struct FriendCardView: View {
             NudgeSheetView(friend: friend)
                 .presentationDetents([.height(420)])
                 .presentationDragIndicator(.visible)
+        }
+        // 위젯 "자극하기" 딥링크로 이 친구가 지목되면 자극 시트 열기
+        .onChange(of: deepLink.pendingNudgeFriendId) { _, id in
+            if id == friend.id { showNudgeSheet = true; deepLink.pendingNudgeFriendId = nil }
+        }
+        .onAppear {
+            if deepLink.pendingNudgeFriendId == friend.id { showNudgeSheet = true; deepLink.pendingNudgeFriendId = nil }
         }
     }
 }

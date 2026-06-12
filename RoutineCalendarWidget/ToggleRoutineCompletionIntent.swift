@@ -53,23 +53,3 @@ struct SetMonthOffsetIntent: AppIntent {
         return .result()
     }
 }
-
-/// 친구 위젯에서 친구를 자극(기본 멘트). 서버 push 후 낙관적 남은횟수 감소 + 리로드.
-@available(iOS 17.0, *)
-struct NudgeFriendIntent: AppIntent {
-    static var title: LocalizedStringResource = "친구 자극하기"
-    static var openAppWhenRun: Bool = false
-
-    @Parameter(title: "friendId")
-    var friendId: String
-
-    init() {}
-    init(friendId: String) { self.friendId = friendId }
-
-    func perform() async throws -> some IntentResult {
-        let ok = await WidgetSync.nudgeFriendOnServer(userId: friendId, message: "오늘 루틴 했어? 🔥")
-        if ok { WidgetSync.optimisticallyDecrementNudge(friendId: friendId) }
-        WidgetCenter.shared.reloadAllTimelines()
-        return .result()
-    }
-}

@@ -18,20 +18,6 @@ struct HomeRoutineWidget: Widget {
     }
 }
 
-/// 가로형: 달력만
-struct CalendarWidget: Widget {
-    let kind = "CalendarWidget"
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: LockScreenProvider()) { entry in
-            CalendarOnlyView(entry: entry)
-                .widgetURL(URL(string: "routinecalendar://today"))
-        }
-        .configurationDisplayName("루틴 달력")
-        .description("이번 달 루틴 완료 현황을 달력으로 봅니다.")
-        .supportedFamilies([.systemMedium])
-    }
-}
-
 /// 가로형: 오늘 루틴 체크만 (목록 위주 → 더 많이 표시)
 struct RoutineListWidget: Widget {
     let kind = "RoutineListWidget"
@@ -60,18 +46,6 @@ struct HomeRoutineView: View {
             RoutineChecklist(entry: entry, maxRows: 4)
         }
         .containerBackground(for: .widget) { Color.rcBg(scheme) }
-    }
-}
-
-// MARK: - 가로형: 달력만
-
-struct CalendarOnlyView: View {
-    let entry: LockScreenEntry
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        MonthMiniCalendar(entry: entry)
-            .containerBackground(for: .widget) { Color.rcBg(scheme) }
     }
 }
 
@@ -203,6 +177,7 @@ struct RoutineChecklist: View {
 
 struct MonthMiniCalendar: View {
     let entry: LockScreenEntry
+    var rowSpacing: CGFloat = 4   // 달력 전용 위젯은 더 크게 줘서 위아래로 펼침
     @Environment(\.colorScheme) private var scheme
 
     private let cal = Calendar.gregorianSunday
@@ -214,7 +189,7 @@ struct MonthMiniCalendar: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: rowSpacing) {
             navBar
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { i in
