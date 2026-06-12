@@ -8,6 +8,12 @@ enum APIConfig {
     /// 실기기로 테스트하려면 localhost 대신 Mac의 LAN IP(예: http://192.168.x.x:8080)로 바꾼다.
     static let baseURL: URL = {
         #if DEBUG
+        // 개발 서버 주소는 DEV_API_BASE_URL(Config/Secrets.xcconfig)에서 주입.
+        // 기본값 localhost(시뮬레이터용), 실기기 테스트 시 Secrets에서 Mac LAN IP로 덮어쓴다.
+        if let str = Bundle.main.object(forInfoDictionaryKey: "DEV_API_BASE_URL") as? String,
+           let url = URL(string: str.trimmingCharacters(in: .whitespaces)), url.scheme != nil {
+            return url
+        }
         return URL(string: "http://localhost:8080")!
         #else
         guard let str = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,

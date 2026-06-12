@@ -83,6 +83,8 @@ targets:
         KAKAO_NATIVE_APP_KEY: $(KAKAO_NATIVE_APP_KEY)
         # 서버 API 베이스 URL (Config.xcconfig 에서 주입)
         API_BASE_URL: $(API_BASE_URL)
+        # 개발(DEBUG) 서버 주소. 실기기 테스트 시 Secrets.xcconfig 에서 Mac LAN IP로 덮어씀
+        DEV_API_BASE_URL: $(DEV_API_BASE_URL)
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - routinecalendar
