@@ -244,8 +244,8 @@ private struct NudgeSheetView: View {
         switch result {
         case .sent:
             UINotificationFeedbackGenerator().notificationOccurred(.success)
-            await friendsStore.refresh()   // 남은 횟수 갱신
-            dismiss()
+            dismiss()                      // 즉시 닫기
+            Task { await friendsStore.refresh() }   // 남은 횟수는 백그라운드로 갱신
         case .cooldown:
             errorMessage = "잠시 후에 다시 자극할 수 있어요. (한 친구당 30분에 2번까지)"
         case .failed:
