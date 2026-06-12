@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 enum AddFriendResult {
     case requestSent   // 요청 전송됨
@@ -49,6 +50,9 @@ final class FriendsStore {
             friends = try await friendsDTO.map(Friend.init(dto:))
             incomingRequests = try await requestsDTO.map(FriendRequest.init(dto:))
             outgoingRequests = try await sentDTO.map(FriendRequest.init(sentDto:))
+            // 친구 위젯용 스냅샷 저장 + 위젯 갱신
+            WidgetSync.saveFriends(friends)
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             // 네트워크/인증 실패 시 기존 목록 유지
         }

@@ -5,6 +5,9 @@ struct LockScreenEntry: TimelineEntry {
     let date: Date
     let routines: [Routine]
     let completion: [UUID: [String: Int]]
+    var monthOffset: Int = 0          // 홈 위젯 미니 달력 표시 월 (0=이번 달)
+    var calendarStyle: CalendarStyle = .dots   // 앱에서 선택한 달력 표시 스타일
+    var friends: [Friend] = []        // 친구 위젯용 친구 현황
 }
 
 struct WidgetDataReader {
@@ -25,7 +28,22 @@ struct WidgetDataReader {
             })
         }
 
-        return LockScreenEntry(date: date, routines: routines, completion: completion)
+        let monthOffset = defaults.integer(forKey: AppGroup.widgetMonthOffsetKey)
+
+        // 앱에서 선택한 달력 스타일(점/막대/링)
+        var calendarStyle: CalendarStyle = .dots
+        if let sData = defaults.data(forKey: AppGroup.settingsKey),
+           let settings = try? decoder.decode(AppSettings.self, from: sData) {
+            calendarStyle = settings.calendarStyle
+        }
+
+        var friends: [Friend] = []
+        if let fData = defaults.data(forKey: AppGroup.friendsKey) {
+            friends = (try? decoder.decode([Friend].self, from: fData)) ?? []
+        }
+
+        return LockScreenEntry(date: date, routines: routines, completion: completion,
+                               monthOffset: monthOffset, calendarStyle: calendarStyle, friends: friends)
     }
 
     // MARK: - Helpers

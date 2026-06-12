@@ -18,6 +18,12 @@ enum APIConfig {
         return url
         #endif
     }()
+
+    /// 위젯 확장이 서버에 직접 push 할 수 있도록 베이스 URL을 App Group에 공유한다.
+    /// (위젯엔 Info.plist API_BASE_URL이 없으므로 앱이 대신 기록)
+    static func publishToWidget() {
+        AppGroup.defaults.set(baseURL.absoluteString, forKey: AppGroup.apiBaseURLKey)
+    }
 }
 
 // MARK: - 서버 DTO (필요한 필드만; 모르는 키는 Codable이 무시)

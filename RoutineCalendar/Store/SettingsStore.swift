@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 @Observable
 @MainActor
@@ -17,6 +18,7 @@ final class SettingsStore {
         if let data = try? JSONEncoder().encode(s) {
             AppGroup.defaults.set(data, forKey: AppGroup.settingsKey)
             AppGroup.defaults.synchronize()
+            WidgetCenter.shared.reloadAllTimelines()   // 스타일/테마 변경을 위젯에 반영
         }
     }
 

@@ -1,0 +1,134 @@
+import WidgetKit
+import SwiftUI
+import AppIntents
+
+// MARK: - 친구 위젯 (내 현황 + 친구 루틴 + 자극하기)
+
+struct FriendsWidget: Widget {
+    let kind = "FriendsWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: LockScreenProvider()) { entry in
+            FriendsWidgetView(entry: entry)
+                .widgetURL(URL(string: "routinecalendar://friends"))
+        }
+        .configurationDisplayName("친구 루틴")
+        .description("친구들의 오늘 루틴을 보고 자극을 보내세요.")
+        .supportedFamilies([.systemMedium])
+    }
+}
+
+struct FriendsWidgetView: View {
+    let entry: LockScreenEntry
+    @Environment(\.colorScheme) private var scheme
+
+    private var myProgress: (done: Int, total: Int, frac: Double) {
+        WidgetDataReader.dayProgress(entry: entry, dateKey: entry.date.dateKey)
+    }
+    private let maxRows = 2   // 미디엄: 제목 + 친구 2명 (넘치면 "+N명 더")
+    private var sortedFriends: [Friend] {
+        entry.friends.sorted { !$0.isAllDone && $1.isAllDone }   // 미완료 먼저
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            header
+            Rectangle().fill(Color.rcSeparator(scheme)).frame(height: 1)
+            friendList
+        }
+        .containerBackground(for: .widget) { Color.rcBg(scheme) }
+    }
+
+    private var header: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.rcAccent(scheme))
+            Text("친구 루틴")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.rcText(scheme))
+            Spacer()
+            HStack(spacing: 4) {
+                Text("나").font(.system(size: 12)).foregroundStyle(Color.rcText2(scheme))
+                Text("\(myProgress.done)/\(myProgress.total)")
+                    .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(myProgress.total > 0 && myProgress.done >= myProgress.total
+                                     ? Color.rcAccent(scheme) : Color.rcText(scheme))
+            }
+            .padding(.horizontal, 9).padding(.vertical, 4)
+            .background(Color.rcCard(scheme), in: Capsule())
+        }
+    }
+
+    private var friendList: some View {
+        VStack(spacing: 6) {
+            if entry.friends.isEmpty {
+                Text("친구를 추가해보세요")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.rcText3(scheme))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ForEach(sortedFriends.prefix(maxRows)) { friend in
+                    row(friend)
+                }
+                if sortedFriends.count > maxRows {
+                    Text("+\(sortedFriends.count - maxRows)명 더")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.rcText3(scheme))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private func row(_ friend: Friend) -> some View {
+        HStack(spacing: 9) {
+            Circle().fill(Color.rcCard2(scheme)).frame(width: 30, height: 30)
+                .overlay(
+                    Text(friend.initial)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.rcText(scheme))
+                )
+            VStack(alignment: .leading, spacing: 1) {
+                Text(friend.name)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.rcText(scheme))
+                    .lineLimit(1)
+                Text("\(friend.streak)일 연속 · 오늘 \(friend.doneToday)/\(friend.totalToday)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.rcText2(scheme))
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            trailing(friend)
+        }
+        .padding(.vertical, 5).padding(.horizontal, 9)
+        .background(Color.rcCard(scheme), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func trailing(_ friend: Friend) -> some View {
+        if friend.isAllDone {
+            badge("완료", color: Color.rcAccent(scheme))
+        } else if friend.nudgeOnCooldown {
+            badge("대기", color: Color.rcText3(scheme))
+        } else {
+            Button(intent: NudgeFriendIntent(friendId: friend.id)) {
+                Text("자극")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.rcAccentText(scheme))
+                    .padding(.horizontal, 12).padding(.vertical, 5)
+                    .background(Color.rcAccent(scheme), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func badge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(Color.rcCard2(scheme), in: Capsule())
+    }
+}

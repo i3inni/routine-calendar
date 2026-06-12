@@ -63,6 +63,20 @@ final class RoutineStore {
         push { try await APIClient.shared.setCompletion(routineId: routineId, date: dateKey, count: next) }
     }
 
+    /// 위젯(AppIntent)이 App Group에 반영한 완료를 앱 메모리로 다시 읽어온다.
+    /// 포그라운드 복귀 시 호출 → 홈 위젯에서 체크한 게 앱에도 보이고, 오늘 요약도 갱신.
+    func reloadCompletionFromAppGroup() {
+        let decoder = JSONDecoder()
+        guard let data = AppGroup.defaults.data(forKey: AppGroup.completionKey),
+              let loaded = try? decoder.decode([String: [String: Int]].self, from: data) else { return }
+        let merged = Dictionary(uniqueKeysWithValues: loaded.compactMap { key, val in
+            UUID(uuidString: key).map { ($0, val) }
+        })
+        guard merged != completion else { return }   // 변화 없으면 무시
+        completion = merged
+        onDataChanged?()   // 위젯 변경분으로 친구 공유용 오늘 요약 재업로드
+    }
+
     // MARK: - Selectors
 
     /// 해당 날짜에 예정된 루틴만 반환
@@ -100,15 +114,6 @@ final class RoutineStore {
             date = Calendar.gregorianSunday.date(byAdding: .day, value: -1, to: date) ?? date
         }
         return count
-    }
-
-    func week(_ routine: Routine) -> [Bool] {
-        (0..<7).map { offset in
-            let date = Calendar.gregorianSunday.date(byAdding: .day, value: offset - 6, to: Date()) ?? Date()
-            let wd = Calendar.gregorianSunday.component(.weekday, from: date) - 1
-            guard routine.isScheduled(on: wd) else { return false }
-            return isDone(routine, date.dateKey)
-        }
     }
 
     // MARK: - 서버 동기화

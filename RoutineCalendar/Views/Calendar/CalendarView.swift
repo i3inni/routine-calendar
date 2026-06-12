@@ -4,6 +4,7 @@ import UIKit
 struct CalendarView: View {
     @Environment(RoutineStore.self) private var store
     @Environment(SettingsStore.self) private var settings
+    @Environment(DeepLinkRouter.self) private var deepLink
     @Environment(\.colorScheme) private var scheme
 
     @State private var displayYear: Int  = Calendar.gregorianSunday.component(.year,  from: Date())
@@ -78,6 +79,13 @@ struct CalendarView: View {
             RoutineSheetView(mode: .edit, routine: routine)
         }
         .preferredColorScheme(colorSchemeOverride)
+        // 위젯 "＋" 딥링크로 들어오면 추가 시트 열기
+        .onChange(of: deepLink.pendingAddRoutine) { _, pending in
+            if pending { showAddSheet = true; deepLink.pendingAddRoutine = false }
+        }
+        .onAppear {
+            if deepLink.pendingAddRoutine { showAddSheet = true; deepLink.pendingAddRoutine = false }
+        }
     }
 
     private var colorSchemeOverride: ColorScheme? {

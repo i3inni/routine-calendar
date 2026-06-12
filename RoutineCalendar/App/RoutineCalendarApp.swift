@@ -13,6 +13,7 @@ struct RoutineCalendarApp: App {
     @State private var session        = SessionStore()
     @State private var deepLink       = DeepLinkRouter()
     @State private var showSplash = true
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -37,7 +38,8 @@ struct RoutineCalendarApp: App {
             .environment(deepLink)
             .preferredColorScheme(colorSchemeOverride)
             .task {
-                await session.bootstrap()   // 저장된 refresh 토큰으로 자동 로그인 시도
+                APIConfig.publishToWidget()  // 위젯이 서버 push 할 베이스 URL 공유
+                await session.bootstrap()    // 저장된 refresh 토큰으로 자동 로그인 시도
             }
             .task {
                 // 알림 권한 요청은 시작을 막지 않도록 별도로 진행
@@ -55,6 +57,8 @@ struct RoutineCalendarApp: App {
                     _ = AuthController.handleOpenUrl(url: url)
                     return
                 }
+                // 위젯 "＋" → 루틴 추가 화면
+                if deepLink.handleIfAddRoutine(url) { return }
                 // 친구추가 딥링크(routinecalendar://add-friend?id=...)
                 deepLink.handleIfFriendLink(url)
             }
@@ -62,6 +66,13 @@ struct RoutineCalendarApp: App {
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                 if let url = activity.webpageURL {
                     deepLink.handleIfFriendLink(url)
+                }
+            }
+            // 포그라운드 복귀 시 위젯에서 체크한 완료를 앱에 반영 + 위젯 달력 이번 달로 리셋
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    routineStore.reloadCompletionFromAppGroup()
+                    AppGroup.defaults.set(0, forKey: AppGroup.widgetMonthOffsetKey)
                 }
             }
         }

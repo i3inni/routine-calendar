@@ -7,6 +7,16 @@ import SwiftUI
 final class DeepLinkRouter {
     /// 친구추가 딥링크로 들어온 상대 ID(handle). 화면이 소비하면 nil로 되돌린다.
     var pendingFriendHandle: String?
+    /// 위젯 "＋"로 들어온 루틴 추가 요청. 캘린더 화면이 소비하면 false로 되돌린다.
+    var pendingAddRoutine = false
+
+    /// 루틴 추가 딥링크(routinecalendar://add-routine)면 플래그를 세우고 true.
+    @discardableResult
+    func handleIfAddRoutine(_ url: URL) -> Bool {
+        guard url.scheme == Self.scheme, url.host == "add-routine" else { return false }
+        pendingAddRoutine = true
+        return true
+    }
 
     static let scheme = "routinecalendar"          // 커스텀 스킴 (테스트/폴백용)
     static let addFriendPath = "/add-friend"        // Universal Link 경로
