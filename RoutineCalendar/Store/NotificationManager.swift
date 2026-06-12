@@ -11,31 +11,11 @@ final class NotificationManager {
             .requestAuthorization(options: [.alert, .sound, .badge])
     }
 
-    // MARK: - 루틴 리마인더 (매일 반복)
-
-    func schedule(for routine: Routine) {
-        cancel(for: routine.id)
-        guard let timeStr = routine.reminder, !routine.anytime,
-              let (hour, minute) = parseHHMM(timeStr) else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = routine.name
-        content.body = "오늘 이 루틴을 완료할 시간이에요"
-        content.sound = .default
-        content.interruptionLevel = .timeSensitive
-        attachIcon(to: content)
-
-        var dc = DateComponents()
-        dc.hour = hour
-        dc.minute = minute
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)
-        let request = UNNotificationRequest(
-            identifier: routine.id.uuidString,
-            content: content,
-            trigger: trigger
-        )
-        UNUserNotificationCenter.current().add(request)
-    }
+    // MARK: - 루틴 리마인더
+    //
+    // 루틴 알림은 **서버 푸시**(ReminderScheduler)가 보낸다 — 완료 여부를 발송 시점에
+    // 체크해 "완료했으면 안 보냄"이 가능하기 때문. 로컬 예약은 쓰지 않는다(중복 방지).
+    // cancel(for:)는 구버전에서 예약해둔 로컬 반복 알림을 청소하는 용도로만 남긴다.
 
     func cancel(for routineId: UUID) {
         UNUserNotificationCenter.current()

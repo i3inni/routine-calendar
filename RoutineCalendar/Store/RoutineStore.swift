@@ -147,7 +147,7 @@ final class RoutineStore {
                 routines = serverRoutines.map(Routine.init(dto:))
                 completion = Self.buildCompletion(serverCompletions)
                 persistCache()
-                rescheduleAllReminders()
+                clearLocalRoutineReminders()   // 서버 푸시로 전환 → 옛 로컬 알림 제거
                 updateStreakGuard()
                 syncEnabled = true
             }
@@ -177,8 +177,9 @@ final class RoutineStore {
         Task { try? await op() }
     }
 
-    private func rescheduleAllReminders() {
-        for r in routines { NotificationManager.shared.schedule(for: r) }
+    /// 루틴 알림은 서버 푸시로 전환됨 → 구버전에서 예약된 로컬 반복 알림이 있으면 청소(중복 방지).
+    private func clearLocalRoutineReminders() {
+        for r in routines { NotificationManager.shared.cancel(for: r.id) }
     }
 
     private static func buildCompletion(_ dtos: [CompletionDTO]) -> [UUID: [String: Int]] {

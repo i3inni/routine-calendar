@@ -328,7 +328,7 @@ struct RoutineSheetView: View {
         } else {
             store.updateRoutine(updated)
         }
-        NotificationManager.shared.schedule(for: updated)
+        // 루틴 알림은 서버 푸시(ReminderScheduler)가 보냄 — 로컬 예약 안 함
         dismiss()
     }
 }
