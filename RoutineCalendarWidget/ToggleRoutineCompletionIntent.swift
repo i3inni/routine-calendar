@@ -23,14 +23,16 @@ struct ToggleRoutineCompletionIntent: AppIntent {
         guard let routine = entry.routines.first(where: { $0.id == uuid }) else { return .result() }
 
         let dateKey = WidgetSync.todayKey
+        // 즉시: App Group 토글 → 위젯이 이 값을 보고 바로 체크 반영 (딜레이 X)
         let next = WidgetSync.toggleInAppGroup(
             routineId: uuid,
             target: routine.target,
             isCount: routine.type == .count,
             dateKey: dateKey
         )
-        await WidgetSync.setCompletionOnServer(routineId: uuid, dateKey: dateKey, count: next)
         WidgetCenter.shared.reloadAllTimelines()
+        // 서버 push는 응답을 기다리지 않고 백그라운드로 (네트워크 왕복 지연 제거)
+        Task { await WidgetSync.setCompletionOnServer(routineId: uuid, dateKey: dateKey, count: next) }
         return .result()
     }
 }

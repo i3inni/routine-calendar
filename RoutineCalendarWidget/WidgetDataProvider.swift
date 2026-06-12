@@ -10,6 +10,44 @@ struct LockScreenEntry: TimelineEntry {
     var friends: [Friend] = []        // 친구 위젯용 친구 현황
 }
 
+extension LockScreenEntry {
+    /// Xcode Preview / 위젯 갤러리용 샘플 데이터.
+    static var sample: LockScreenEntry {
+        let cal = Calendar.gregorianSunday
+        let today = Date()
+
+        let r1 = Routine(name: "코드트리 한 문제 풀기")
+        let r2 = Routine(name: "비타민 챙겨먹기")
+        let r3 = Routine(name: "유산균 챙겨먹기")
+        let r4 = Routine(name: "씻기 전 푸쉬업")
+        let routines = [r1, r2, r3, r4]
+
+        // 최근 6일 일부 완료 (달력 점/막대/링 표시용)
+        var completion: [UUID: [String: Int]] = [:]
+        for offset in 1...6 {
+            guard let day = cal.date(byAdding: .day, value: -offset, to: today) else { continue }
+            let key = day.dateKey
+            let doneCount = (offset % 2 == 0) ? 4 : 3
+            for (i, r) in routines.enumerated() where i < doneCount {
+                completion[r.id, default: [:]][key] = 1
+            }
+        }
+        completion[r4.id, default: [:]][today.dateKey] = 1   // 오늘 1개 완료
+
+        let friends = [
+            Friend(id: "1", name: "지수", initial: "지", doneToday: 2, totalToday: 3,
+                   remaining: ["운동"], done: ["독서", "물 마시기"], streak: 5),
+            Friend(id: "2", name: "민호", initial: "민", doneToday: 4, totalToday: 4,
+                   remaining: [], done: ["운동", "독서", "물", "스트레칭"], streak: 12),
+            Friend(id: "3", name: "하라", initial: "하", doneToday: 0, totalToday: 2,
+                   remaining: ["명상", "산책"], done: [], streak: 0),
+        ]
+
+        return LockScreenEntry(date: today, routines: routines, completion: completion,
+                               monthOffset: 0, calendarStyle: .ring, friends: friends)
+    }
+}
+
 struct WidgetDataReader {
     static func readEntry(for date: Date = Date()) -> LockScreenEntry {
         let decoder = JSONDecoder()

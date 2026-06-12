@@ -5,11 +5,12 @@ import SwiftUI
 
 struct LockScreenProvider: TimelineProvider {
     func placeholder(in context: Context) -> LockScreenEntry {
-        WidgetDataReader.readEntry()
+        .sample
     }
 
     func getSnapshot(in context: Context, completion: @escaping (LockScreenEntry) -> Void) {
-        completion(WidgetDataReader.readEntry())
+        // 위젯 갤러리(미리보기)에선 샘플로 예쁘게, 실제 배치 시엔 실데이터.
+        completion(context.isPreview ? .sample : WidgetDataReader.readEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<LockScreenEntry>) -> Void) {

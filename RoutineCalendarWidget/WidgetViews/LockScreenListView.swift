@@ -42,7 +42,7 @@ struct LockScreenListView: View {
                 }
                 .foregroundStyle(.primary)
             } else {
-                ForEach(Array(scheduled.prefix(3))) { routine in
+                ForEach(Array(scheduled.prefix(2))) { routine in
                     let done = WidgetDataReader.isDone(entry: entry, routine: routine, dateKey: dateKey)
                     HStack(spacing: 4) {
                         Image(systemName: done ? "checkmark.circle.fill" : "circle")
@@ -55,8 +55,8 @@ struct LockScreenListView: View {
                             .lineLimit(1)
                     }
                 }
-                if scheduled.count > 3 {
-                    Text("+\(scheduled.count - 3)개")
+                if scheduled.count > 2 {
+                    Text("+\(scheduled.count - 2)개")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }

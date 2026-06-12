@@ -2,6 +2,24 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
+// MARK: - 틴트(홈화면 색조) 대응
+//
+// iOS18 틴트/vibrant 렌더링에선 솔리드 카드 배경(흰색)이 단색 막대로 변해 내용을 덮는다.
+// fullColor일 때만 카드 배경을 칠하고, 틴트 모드에선 배경을 비워 텍스트/아이콘만 보이게 한다.
+extension View {
+    // 항상 같은 구조(.background)를 적용하고 색만 바꾼다 — if/else로 뷰 타입이 갈리면
+    // VStack이 행 높이를 일정하게 못 잡아 간격이 벌어질 수 있어 색만 바꿈.
+    // 틴트 모드: 솔리드(흰 덩어리)는 안 되지만 반투명 fill은 카드 구분감을 준다.
+    func widgetCard(_ scheme: ColorScheme, _ mode: WidgetRenderingMode, radius: CGFloat = 12) -> some View {
+        background(mode == .fullColor ? Color.rcCard(scheme) : Color.rcText(scheme).opacity(0.08),
+                   in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+    }
+
+    func widgetCapsule(_ color: Color, _ mode: WidgetRenderingMode) -> some View {
+        background(mode == .fullColor ? color : Color.clear, in: Capsule())
+    }
+}
+
 // MARK: - 위젯 정의 (3종)
 
 /// 큰 정사각형: 달력 + 오늘 루틴 체크
@@ -43,7 +61,7 @@ struct HomeRoutineView: View {
             TodayHeader(entry: entry)
             MonthMiniCalendar(entry: entry)
             Rectangle().fill(Color.rcSeparator(scheme)).frame(height: 1)
-            RoutineChecklist(entry: entry, maxRows: 4)
+            RoutineChecklist(entry: entry, maxRows: 2)
         }
         .containerBackground(for: .widget) { Color.rcBg(scheme) }
     }
@@ -58,7 +76,7 @@ struct RoutineListOnlyView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             TodayHeader(entry: entry)
-            RoutineChecklist(entry: entry, maxRows: 4)
+            RoutineChecklist(entry: entry, maxRows: 2)
         }
         .containerBackground(for: .widget) { Color.rcBg(scheme) }
     }
@@ -69,6 +87,7 @@ struct RoutineListOnlyView: View {
 struct TodayHeader: View {
     let entry: LockScreenEntry
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetRenderingMode) private var renderMode
 
     private var progress: (done: Int, total: Int, frac: Double) {
         WidgetDataReader.dayProgress(entry: entry, dateKey: entry.date.dateKey)
@@ -92,9 +111,16 @@ struct TodayHeader: View {
             Link(destination: URL(string: "routinecalendar://add-routine")!) {
                 Image(systemName: "plus")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.rcAccentText(scheme))
+                    // 틴트 모드: 채운 원이 단색이 되면 +가 안 보임 → 채움 빼고 테두리+아이콘
+                    .foregroundStyle(renderMode == .fullColor ? Color.rcAccentText(scheme) : Color.rcText(scheme))
                     .frame(width: 28, height: 28)
-                    .background(Color.rcAccent(scheme), in: Circle())
+                    .background {
+                        if renderMode == .fullColor {
+                            Circle().fill(Color.rcAccent(scheme))
+                        } else {
+                            Circle().stroke(Color.rcText3(scheme), lineWidth: 1)
+                        }
+                    }
             }
         }
     }
@@ -113,6 +139,7 @@ struct RoutineChecklist: View {
     let entry: LockScreenEntry
     let maxRows: Int
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetRenderingMode) private var renderMode
 
     private var todayKey: String { entry.date.dateKey }
     private var todays: [Routine] {
@@ -120,13 +147,13 @@ struct RoutineChecklist: View {
     }
 
     var body: some View {
-        VStack(spacing: 7) {
-            if todays.isEmpty {
-                Text("오늘 예정된 루틴이 없어요")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.rcText3(scheme))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
+        if todays.isEmpty {
+            Text("오늘 예정된 루틴이 없어요")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.rcText3(scheme))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack(spacing: 7) {
                 ForEach(todays.prefix(maxRows)) { routine in
                     row(routine)
                 }
@@ -136,8 +163,8 @@ struct RoutineChecklist: View {
                         .foregroundStyle(Color.rcText3(scheme))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)   // 상단 정렬(간격 벌어짐 방지)
         }
     }
 
@@ -169,7 +196,7 @@ struct RoutineChecklist: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 11)
-        .background(Color.rcCard(scheme), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .widgetCard(scheme, renderMode)
     }
 }
 
@@ -179,6 +206,7 @@ struct MonthMiniCalendar: View {
     let entry: LockScreenEntry
     var rowSpacing: CGFloat = 4   // 달력 전용 위젯은 더 크게 줘서 위아래로 펼침
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetRenderingMode) private var renderMode
 
     private let cal = Calendar.gregorianSunday
     private let weekdaySymbols = ["일", "월", "화", "수", "목", "금", "토"]
@@ -234,7 +262,7 @@ struct MonthMiniCalendar: View {
                     Text("오늘").font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.rcAccent(scheme))
                         .padding(.horizontal, 9).padding(.vertical, 3)
-                        .background(Color.rcCard2(scheme), in: Capsule())
+                        .widgetCapsule(Color.rcCard2(scheme), renderMode)
                 }
                 .buttonStyle(.plain)
             }
@@ -314,4 +342,18 @@ struct MonthMiniCalendar: View {
         while cells.count % 7 != 0 { cells.append(nil) }
         return stride(from: 0, to: cells.count, by: 7).map { Array(cells[$0..<$0 + 7]) }
     }
+}
+
+// MARK: - Previews (캔버스에서 fullColor ↔ 틴트 전환해 확인)
+
+#Preview("오늘 루틴 + 달력", as: .systemLarge) {
+    HomeRoutineWidget()
+} timeline: {
+    LockScreenEntry.sample
+}
+
+#Preview("오늘 루틴(M)", as: .systemMedium) {
+    RoutineListWidget()
+} timeline: {
+    LockScreenEntry.sample
 }

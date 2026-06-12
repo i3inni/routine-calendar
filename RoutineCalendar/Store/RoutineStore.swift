@@ -75,6 +75,13 @@ final class RoutineStore {
         guard merged != completion else { return }   // 변화 없으면 무시
         completion = merged
         onDataChanged?()   // 위젯 변경분으로 친구 공유용 오늘 요약 재업로드
+        // 위젯이 오프라인/짧은 수명으로 서버에 못 보냈을 수 있으니 오늘치를 서버에 재반영(안전망)
+        let today = Date().dateKey
+        for r in routines {
+            let id = r.id
+            let count = completion[id]?[today] ?? 0
+            push { try await APIClient.shared.setCompletion(routineId: id, date: today, count: count) }
+        }
     }
 
     // MARK: - Selectors

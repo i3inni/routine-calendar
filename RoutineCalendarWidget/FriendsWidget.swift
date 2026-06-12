@@ -20,6 +20,7 @@ struct FriendsWidget: Widget {
 struct FriendsWidgetView: View {
     let entry: LockScreenEntry
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetRenderingMode) private var renderMode
 
     private var myProgress: (done: Int, total: Int, frac: Double) {
         WidgetDataReader.dayProgress(entry: entry, dateKey: entry.date.dateKey)
@@ -58,7 +59,7 @@ struct FriendsWidgetView: View {
                                      ? Color.rcAccent(scheme) : Color.rcText(scheme))
             }
             .padding(.horizontal, 9).padding(.vertical, 4)
-            .background(Color.rcCard(scheme), in: Capsule())
+            .widgetCapsule(Color.rcCard(scheme), renderMode)
         }
     }
 
@@ -86,12 +87,17 @@ struct FriendsWidgetView: View {
 
     private func row(_ friend: Friend) -> some View {
         HStack(spacing: 9) {
-            Circle().fill(Color.rcCard2(scheme)).frame(width: 28, height: 28)
-                .overlay(
-                    Text(friend.initial)
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(Color.rcText(scheme))
-                )
+            Text(friend.initial)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(Color.rcText(scheme))
+                .frame(width: 28, height: 28)
+                .background {
+                    if renderMode == .fullColor {
+                        Circle().fill(Color.rcCard2(scheme))
+                    } else {
+                        Circle().stroke(Color.rcText3(scheme), lineWidth: 1)   // 틴트: 테두리만
+                    }
+                }
             VStack(alignment: .leading, spacing: 1) {
                 Text(friend.name)
                     .font(.system(size: 14, weight: .medium))
@@ -106,7 +112,7 @@ struct FriendsWidgetView: View {
             trailing(friend)
         }
         .padding(.vertical, 5).padding(.horizontal, 11)
-        .background(Color.rcCard(scheme), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .widgetCard(scheme, renderMode, radius: 13)
     }
 
     @ViewBuilder
@@ -120,9 +126,15 @@ struct FriendsWidgetView: View {
             Link(destination: URL(string: "routinecalendar://nudge/\(friend.id)")!) {
                 Text("자극하기")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.rcAccentText(scheme))
+                    .foregroundStyle(renderMode == .fullColor ? Color.rcAccentText(scheme) : Color.rcText(scheme))
                     .padding(.horizontal, 12).padding(.vertical, 5)
-                    .background(Color.rcAccent(scheme), in: Capsule())
+                    .background {
+                        if renderMode == .fullColor {
+                            Capsule().fill(Color.rcAccent(scheme))
+                        } else {
+                            Capsule().stroke(Color.rcText3(scheme), lineWidth: 1)
+                        }
+                    }
             }
         }
     }
@@ -132,6 +144,12 @@ struct FriendsWidgetView: View {
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(color)
             .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(Color.rcCard2(scheme), in: Capsule())
+            .widgetCapsule(Color.rcCard2(scheme), renderMode)
     }
+}
+
+#Preview("친구 루틴", as: .systemMedium) {
+    FriendsWidget()
+} timeline: {
+    LockScreenEntry.sample
 }
