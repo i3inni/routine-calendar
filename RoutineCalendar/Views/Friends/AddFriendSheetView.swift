@@ -13,6 +13,11 @@ struct AddFriendSheetView: View {
     @State private var errorMessage: String?
     @State private var showCopiedToast = false
 
+    // 카카오로 친구 찾기
+    @State private var showKakaoSheet = false
+    @State private var loadingKakao = false
+    @State private var kakaoAlert: String?
+
     /// 딥링크/공유로 들어온 경우 친구 ID를 미리 채운다.
     init(prefillId: String? = nil) {
         _inputId = State(initialValue: prefillId ?? "")
@@ -132,6 +137,30 @@ struct AddFriendSheetView: View {
                             }
                         }
                         .padding(.horizontal, 16)
+
+                        // 카카오로 친구 찾기
+                        SectionLabel("카카오로 찾기")
+                        Button {
+                            Task { await loadKakaoFriends() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if loadingKakao {
+                                    ProgressView().tint(Color(hex: "191600"))
+                                } else {
+                                    Image(systemName: "message.fill")
+                                    Text("카카오로 친구 찾기")
+                                }
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color(hex: "191600"))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(Color(hex: "FEE500"),
+                                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .disabled(loadingKakao)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
                     }
                 }
             }
@@ -150,6 +179,39 @@ struct AddFriendSheetView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showKakaoSheet) {
+            KakaoFriendSheet()
+                .presentationDetents([.fraction(0.45), .large])
+        }
+        .alert("카카오 친구 찾기", isPresented: .init(
+            get: { kakaoAlert != nil },
+            set: { if !$0 { kakaoAlert = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(kakaoAlert ?? "")
+        }
+    }
+
+    private func loadKakaoFriends() async {
+        loadingKakao = true
+        defer { loadingKakao = false }
+        switch await friendsStore.findKakaoFriends() {
+        case .ok:
+            if friendsStore.kakaoCandidates.isEmpty {
+                kakaoAlert = "카카오 친구 중 이 앱을 쓰는 친구를 찾지 못했어요."
+            } else {
+                showKakaoSheet = true
+            }
+        case .alreadyLinked:
+            kakaoAlert = "이 카카오는 이미 다른 계정에 연동돼 있어요."
+        case .consentRequired:
+            kakaoAlert = "카카오 친구 목록 제공 동의가 필요해요. 다시 시도하면 동의 화면이 나와요."
+        case .notConfigured:
+            kakaoAlert = "카카오 설정이 필요해요."
+        case .failed(let reason):
+            kakaoAlert = reason   // 디버깅용 상세 사유 (①로그인 / ②서버 단계 + 응답코드)
+        }
     }
 
     private func sendRequest() async {

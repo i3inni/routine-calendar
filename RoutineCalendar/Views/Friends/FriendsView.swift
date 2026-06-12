@@ -8,9 +8,6 @@ struct FriendsView: View {
     @State private var showAddSheet = false
     @State private var prefillId: String?
     @State private var requestTab: RequestTab = .received
-    @State private var showKakaoSheet = false
-    @State private var loadingKakao = false
-    @State private var kakaoAlert: String?
 
     private enum RequestTab { case received, sent }
 
@@ -119,26 +116,6 @@ struct FriendsView: View {
                             )
                         }
 
-                        // 카카오로 친구 찾기
-                        Button {
-                            Task { await loadKakaoFriends() }
-                        } label: {
-                            HStack(spacing: 8) {
-                                if loadingKakao {
-                                    ProgressView().tint(Color(hex: "191600"))
-                                } else {
-                                    Image(systemName: "message.fill")
-                                    Text("카카오로 친구 찾기")
-                                }
-                            }
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Color(hex: "191600"))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 15)
-                            .background(Color(hex: "FEE500"),
-                                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        }
-                        .disabled(loadingKakao)
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 100)
@@ -148,18 +125,6 @@ struct FriendsView: View {
         }
         .sheet(isPresented: $showAddSheet) {
             AddFriendSheetView(prefillId: prefillId)
-        }
-        .sheet(isPresented: $showKakaoSheet) {
-            KakaoFriendSheet()
-                .presentationDetents([.fraction(0.45), .large])
-        }
-        .alert("카카오 친구 찾기", isPresented: .init(
-            get: { kakaoAlert != nil },
-            set: { if !$0 { kakaoAlert = nil } }
-        )) {
-            Button("확인", role: .cancel) {}
-        } message: {
-            Text(kakaoAlert ?? "")
         }
         // 딥링크로 들어온 친구 ID → 시트 열고 자동 입력
         .onChange(of: deepLink.pendingFriendHandle) { _, new in
@@ -180,27 +145,6 @@ struct FriendsView: View {
         prefillId = handle
         showAddSheet = true
         deepLink.pendingFriendHandle = nil   // 1회 소비
-    }
-
-    private func loadKakaoFriends() async {
-        loadingKakao = true
-        defer { loadingKakao = false }
-        switch await friendsStore.findKakaoFriends() {
-        case .ok:
-            if friendsStore.kakaoCandidates.isEmpty {
-                kakaoAlert = "카카오 친구 중 이 앱을 쓰는 친구를 찾지 못했어요."
-            } else {
-                showKakaoSheet = true
-            }
-        case .alreadyLinked:
-            kakaoAlert = "이 카카오는 이미 다른 계정에 연동돼 있어요."
-        case .consentRequired:
-            kakaoAlert = "카카오 친구 목록 제공 동의가 필요해요. 다시 시도하면 동의 화면이 나와요."
-        case .notConfigured:
-            kakaoAlert = "카카오 설정이 필요해요."
-        case .failed(let reason):
-            kakaoAlert = reason   // 디버깅용 상세 사유 (①로그인 / ②서버 단계 + 응답코드)
-        }
     }
 
     private func emptyRequestText(_ text: String) -> some View {
@@ -312,9 +256,9 @@ private struct SentRequestRowView: View {
     }
 }
 
-// MARK: - 카카오 친구 찾기 후보 시트
+// MARK: - 카카오 친구 찾기 후보 시트 (친구 추가 시트에서 사용)
 
-private struct KakaoFriendSheet: View {
+struct KakaoFriendSheet: View {
     @Environment(FriendsStore.self) private var friendsStore
     @Environment(\.colorScheme) private var scheme
     @State private var requestError: String?
