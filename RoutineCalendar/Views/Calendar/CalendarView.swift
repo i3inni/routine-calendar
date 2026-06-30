@@ -73,10 +73,10 @@ struct CalendarView: View {
             }
         }
         .sheet(isPresented: $showAddSheet) {
-            RoutineSheetView(mode: .add, routine: nil)
+            RoutineSheetView(mode: .add, routine: nil, dateKey: selectedDateKey)
         }
         .sheet(item: $routineToEdit) { routine in
-            RoutineSheetView(mode: .edit, routine: routine)
+            RoutineSheetView(mode: .edit, routine: routine, dateKey: selectedDateKey)
         }
         .preferredColorScheme(colorSchemeOverride)
         // 위젯 "＋" 딥링크로 들어오면 추가 시트 열기

@@ -38,6 +38,35 @@ final class RoutineStore {
         push { try await APIClient.shared.deleteRoutine(id: routine.id) }
     }
 
+    /// 선택한 날짜를 기준으로 루틴 종료. 그 날짜(당일 포함)부터 캘린더에서 사라지고,
+    /// 이전 기록은 그대로 보존된다. 종료일이 시작일과 같거나 이전이면(=남는 구간 없음) 완전 삭제.
+    func endRoutine(_ routine: Routine, onDate dateKey: String) {
+        guard let date = Date.from(dateKey: dateKey) else { return }
+        let cal = Calendar.gregorianSunday
+        let endDay = cal.startOfDay(for: date)
+        let createdDay = cal.startOfDay(for: routine.createdAt)
+
+        // 시작일 당일/이전에 삭제 → 활성 구간이 남지 않으므로 완전 삭제
+        guard endDay > createdDay else {
+            deleteRoutine(routine)
+            return
+        }
+
+        guard let idx = routines.firstIndex(where: { $0.id == routine.id }) else { return }
+        var updated = routines[idx]
+        updated.endDate = endDay
+        routines[idx] = updated
+
+        // 종료일(당일 포함) 이후 기록은 더 이상 노출되지 않으니 정리
+        completion[routine.id] = completion[routine.id]?.filter { key, _ in
+            guard let d = Date.from(dateKey: key) else { return false }
+            return cal.startOfDay(for: d) < endDay
+        }
+
+        save()
+        push { try await APIClient.shared.updateRoutine(updated) }
+    }
+
     // MARK: - Completion
 
     func getCount(_ routineId: UUID, _ dateKey: String) -> Int {
@@ -89,8 +118,7 @@ final class RoutineStore {
     /// 해당 날짜에 예정된 루틴만 반환
     func scheduledRoutines(for dateKey: String) -> [Routine] {
         guard let date = Date.from(dateKey: dateKey) else { return routines }
-        let weekday = Calendar.gregorianSunday.component(.weekday, from: date) - 1  // 0=일
-        return routines.filter { $0.isScheduled(on: weekday) }
+        return routines.filter { $0.isScheduled(on: date) }
     }
 
     func dayProgress(_ dateKey: String) -> (done: Int, total: Int, frac: Double) {
@@ -104,15 +132,17 @@ final class RoutineStore {
     func streak(_ routine: Routine) -> Int {
         var date = Date()
         // 오늘 예정이 아니면 어제부터 카운트
-        let todayWd = Calendar.gregorianSunday.component(.weekday, from: date) - 1
-        if !routine.isScheduled(on: todayWd) || !isDone(routine, date.dateKey) {
+        if !routine.isScheduled(on: date) || !isDone(routine, date.dateKey) {
             date = Calendar.gregorianSunday.date(byAdding: .day, value: -1, to: date) ?? date
         }
         var count = 0
         while count < 366 {
-            let wd = Calendar.gregorianSunday.component(.weekday, from: date) - 1
+            let day = Calendar.gregorianSunday.startOfDay(for: date)
+            let createdDay = Calendar.gregorianSunday.startOfDay(for: routine.createdAt)
+            guard day >= createdDay else { break }
+
             // 예정된 날이 아니면 스킵 (스트릭 유지)
-            if !routine.isScheduled(on: wd) {
+            if !routine.isScheduled(on: date) {
                 date = Calendar.gregorianSunday.date(byAdding: .day, value: -1, to: date) ?? date
                 continue
             }
@@ -269,7 +299,20 @@ private extension Routine {
             reminder: dto.reminder,
             anytime: dto.anytime,
             repeatMode: RepeatMode(rawValue: dto.repeatMode) ?? .daily,
-            repeatDays: dto.repeatDays
+            repeatDays: dto.repeatDays,
+            createdAt: dto.createdAt.flatMap(Date.fromServerInstant) ?? Date(),
+            endDate: dto.endDate.flatMap(Date.from(dateKey:))
         )
+    }
+}
+
+private extension Date {
+    static func fromServerInstant(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: value) { return date }
+
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
     }
 }

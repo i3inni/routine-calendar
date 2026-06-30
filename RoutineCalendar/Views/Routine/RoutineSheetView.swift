@@ -5,6 +5,8 @@ enum RoutineSheetMode { case add, edit }
 struct RoutineSheetView: View {
     let mode: RoutineSheetMode
     let routine: Routine?
+    /// 캘린더에서 선택 중인 날짜. 추가 시 이 날짜가 루틴 시작일, 삭제 시 이 날짜가 종료 기준일이 된다.
+    let dateKey: String
 
     @Environment(RoutineStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -22,6 +24,13 @@ struct RoutineSheetView: View {
     @State private var showDeleteConfirm = false
 
     private let dayLabels = ["일", "월", "화", "수", "목", "금", "토"]
+
+    /// 삭제 확인 문구에 쓸 "m월 d일" (선택일)
+    private var deleteDateLabel: String {
+        guard let d = Date.from(dateKey: dateKey) else { return "선택한 날짜" }
+        let cal = Calendar.gregorianSunday
+        return "\(cal.component(.month, from: d))월 \(cal.component(.day, from: d))일"
+    }
 
     var body: some View {
         NavigationStack {
@@ -225,11 +234,11 @@ struct RoutineSheetView: View {
         .alert("루틴을 삭제할까요?", isPresented: $showDeleteConfirm) {
             Button("아니요", role: .cancel) {}
             Button("예", role: .destructive) {
-                if let r = routine { store.deleteRoutine(r); NotificationManager.shared.cancel(for: r.id) }
+                if let r = routine { store.endRoutine(r, onDate: dateKey); NotificationManager.shared.cancel(for: r.id) }
                 dismiss()
             }
         } message: {
-            Text("이 루틴과 기록이 삭제됩니다.")
+            Text("\(deleteDateLabel)부터 이 루틴이 사라져요. 이전 날짜의 기록은 그대로 남아요.")
         }
     }
 
@@ -317,11 +326,17 @@ struct RoutineSheetView: View {
                      Calendar.current.component(.minute, from: reminderTime))
             : nil
 
+        // 추가: 선택한 날짜를 시작일로. 편집: 기존 시작일/종료일 보존(시작일 이동 금지).
+        let startDate: Date = (mode == .edit ? routine?.createdAt : Date.from(dateKey: dateKey))
+            ?? Date()
+        let endDate: Date? = (mode == .edit) ? routine?.endDate : nil
+
         let updated = Routine(
             id: routine?.id ?? UUID(),
             name: name, type: type, target: type == .check ? 1 : target,
             unit: unit, reminder: reminderString, anytime: anytime,
-            repeatMode: finalRepeatMode, repeatDays: finalDays
+            repeatMode: finalRepeatMode, repeatDays: finalDays,
+            createdAt: startDate, endDate: endDate
         )
         if mode == .add {
             store.addRoutine(updated)

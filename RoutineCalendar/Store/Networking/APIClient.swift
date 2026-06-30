@@ -96,6 +96,8 @@ struct RoutineDTO: Decodable {
     let anytime: Bool
     let repeatMode: String
     let repeatDays: [Int]
+    let createdAt: String?
+    let endDate: String?     // "yyyy-MM-dd" or nil (서버 미지원 시 nil)
 }
 
 struct CompletionDTO: Decodable {
@@ -287,9 +289,18 @@ final class APIClient: @unchecked Sendable {
             "reminder": r.reminder ?? NSNull(),
             "anytime": r.anytime,
             "repeatMode": r.repeatMode.rawValue,
-            "repeatDays": r.repeatDays
+            "repeatDays": r.repeatDays,
+            // 시작일/종료일도 함께 전송(서버가 지원하면 영속화, 미지원이면 무시됨)
+            "createdAt": Self.iso8601.string(from: r.createdAt),
+            "endDate": r.endDate.map { $0.dateKey } ?? NSNull()
         ]
     }
+
+    private static let iso8601: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 
     // MARK: - 코어 요청
 
