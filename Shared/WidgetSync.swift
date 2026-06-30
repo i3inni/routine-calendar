@@ -7,8 +7,8 @@ enum WidgetSync {
 
     // MARK: - App Group 완료 토글
 
-    /// 오늘 날짜 키.
-    static var todayKey: String { Date().dateKey }
+    /// 오늘 날짜 키 (하루 리셋 시각 반영).
+    static var todayKey: String { DayBoundary.todayKey }
 
     /// App Group의 완료 데이터를 토글하고 새 카운트를 반환한다.
     /// (앱의 RoutineStore.toggle 과 동일한 규칙)

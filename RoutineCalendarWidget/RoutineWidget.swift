@@ -16,11 +16,17 @@ struct LockScreenProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<LockScreenEntry>) -> Void) {
         let entry = WidgetDataReader.readEntry()
         // 데이터 변경 시엔 앱이 reloadAllTimelines()로 즉시 갱신.
-        // 여기선 날짜가 바뀌는 자정에만 한 번 갱신하면 충분.
-        let midnight = Calendar.gregorianSunday.startOfDay(
-            for: Calendar.gregorianSunday.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-        )
-        completion(Timeline(entries: [entry], policy: .after(midnight)))
+        // 날짜가 바뀌는 시점은 자정이 아니라 '리셋 시각'(새벽 N시)이므로 그때 한 번 갱신한다.
+        completion(Timeline(entries: [entry], policy: .after(Self.nextDayBoundary())))
+    }
+
+    /// 다음 하루 경계(리셋 시각). resetHour=0이면 자정과 동일.
+    private static func nextDayBoundary(from now: Date = Date()) -> Date {
+        let cal = Calendar.gregorianSunday
+        var comps = cal.dateComponents([.year, .month, .day], from: now)
+        comps.hour = DayBoundary.resetHour
+        let todayReset = cal.date(from: comps) ?? now
+        return todayReset > now ? todayReset : (cal.date(byAdding: .day, value: 1, to: todayReset) ?? now)
     }
 }
 

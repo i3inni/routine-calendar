@@ -90,7 +90,7 @@ struct TodayHeader: View {
     @Environment(\.widgetRenderingMode) private var renderMode
 
     private var progress: (done: Int, total: Int, frac: Double) {
-        WidgetDataReader.dayProgress(entry: entry, dateKey: entry.date.dateKey)
+        WidgetDataReader.dayProgress(entry: entry, dateKey: entry.todayKey)
     }
 
     var body: some View {
@@ -141,7 +141,7 @@ struct RoutineChecklist: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.widgetRenderingMode) private var renderMode
 
-    private var todayKey: String { entry.date.dateKey }
+    private var todayKey: String { entry.todayKey }
     private var todays: [Routine] {
         WidgetDataReader.scheduledRoutines(entry: entry, dateKey: todayKey)
     }
@@ -274,8 +274,8 @@ struct MonthMiniCalendar: View {
     private func cell(_ day: Date?) -> some View {
         if let day {
             let prog = WidgetDataReader.dayProgress(entry: entry, dateKey: day.dateKey)
-            let isToday = entry.monthOffset == 0 && cal.isDate(day, inSameDayAs: entry.date)
-            let isFuture = day > entry.date
+            let isToday = entry.monthOffset == 0 && day.dateKey == entry.todayKey
+            let isFuture = day.dateKey > entry.todayKey
             let show = !isFuture && prog.total > 0
             VStack(spacing: 0.5) {
                 ZStack {

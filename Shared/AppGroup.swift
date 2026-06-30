@@ -13,6 +13,8 @@ enum AppGroup {
     static let widgetMonthOffsetKey = "rcal_widget_month_offset"
     /// 친구 위젯용 친구 현황 스냅샷([Friend]). 앱이 친구 새로고침 시 기록.
     static let friendsKey = "rcal_friends_v1"
+    /// 하루 리셋 시각(새벽 0~6시). '오늘'을 자정이 아닌 이 시각 기준으로 계산. (앱·위젯 공통, 가벼운 Int)
+    static let dayResetHourKey = "rcal_day_reset_hour"
 
     static var defaults: UserDefaults {
         UserDefaults(suiteName: suiteName) ?? .standard

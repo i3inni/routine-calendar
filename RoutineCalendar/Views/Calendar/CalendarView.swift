@@ -7,9 +7,12 @@ struct CalendarView: View {
     @Environment(DeepLinkRouter.self) private var deepLink
     @Environment(\.colorScheme) private var scheme
 
-    @State private var displayYear: Int  = Calendar.gregorianSunday.component(.year,  from: Date())
-    @State private var displayMonth: Int = Calendar.gregorianSunday.component(.month, from: Date())
-    @State private var selectedDateKey: String = Date().dateKey
+    @State private var displayYear: Int  = Calendar.gregorianSunday.component(.year,  from: Self.logicalToday)
+    @State private var displayMonth: Int = Calendar.gregorianSunday.component(.month, from: Self.logicalToday)
+    @State private var selectedDateKey: String = DayBoundary.todayKey
+
+    /// 리셋 시각을 반영한 '오늘' Date (달/선택 기본값 계산용)
+    private static var logicalToday: Date { Date.from(dateKey: DayBoundary.todayKey) ?? Date() }
     @State private var routineToEdit: Routine?
     @State private var showAddSheet = false
     @State private var showSettings = false
@@ -115,9 +118,9 @@ struct CalendarView: View {
     }
 
     private func jumpToToday() {
-        let today = Date()
+        let today = Self.logicalToday
         displayYear  = Calendar.gregorianSunday.component(.year,  from: today)
         displayMonth = Calendar.gregorianSunday.component(.month, from: today)
-        selectedDateKey = today.dateKey
+        selectedDateKey = DayBoundary.todayKey
     }
 }

@@ -67,22 +67,30 @@ struct AppSettings: Codable, Sendable {
     var checkStyle: CheckStyle    = .circle
     var widgetStyle: WidgetStyle  = .list
     var myDisplayName: String     = ""   // 친구에게 표시될 내 이름
+    var dayResetHour: Int         = 0    // 하루 리셋 시각(새벽 0~6시). 0 = 자정 기준(기존과 동일)
+    var nudgePresets: [String]    = AppSettings.defaultNudgePresets   // 자극하기 빠른 멘트(2개)
+
+    static let defaultNudgePresets = ["얼른 루틴 시작해!", "오늘도 화이팅"]
 
     init(
         theme: AppTheme = .system,
         calendarStyle: CalendarStyle = .dots,
         checkStyle: CheckStyle = .circle,
         widgetStyle: WidgetStyle = .list,
-        myDisplayName: String = ""
+        myDisplayName: String = "",
+        dayResetHour: Int = 0,
+        nudgePresets: [String] = AppSettings.defaultNudgePresets
     ) {
         self.theme = theme
         self.calendarStyle = calendarStyle
         self.checkStyle = checkStyle
         self.widgetStyle = widgetStyle
         self.myDisplayName = myDisplayName
+        self.dayResetHour = dayResetHour
+        self.nudgePresets = nudgePresets
     }
 
-    // 이전 버전 데이터(myDisplayName 없음) 호환 디코더
+    // 이전 버전 데이터(myDisplayName/dayResetHour/nudgePresets 없음) 호환 디코더
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         theme         = try c.decodeIfPresent(AppTheme.self,      forKey: .theme)         ?? .system
@@ -90,5 +98,31 @@ struct AppSettings: Codable, Sendable {
         checkStyle    = try c.decodeIfPresent(CheckStyle.self,    forKey: .checkStyle)    ?? .circle
         widgetStyle   = try c.decodeIfPresent(WidgetStyle.self,   forKey: .widgetStyle)   ?? .list
         myDisplayName = try c.decodeIfPresent(String.self,        forKey: .myDisplayName) ?? ""
+        dayResetHour  = try c.decodeIfPresent(Int.self,           forKey: .dayResetHour)  ?? 0
+        nudgePresets  = try c.decodeIfPresent([String].self,      forKey: .nudgePresets)  ?? AppSettings.defaultNudgePresets
     }
+}
+
+/// 하루 리셋 시각(새벽 N시)을 반영한 '논리적 날짜' 계산. 앱·위젯 공통.
+/// resetHour=0이면 기존 자정 기준과 동일. 리셋 시각 이전 시간대는 전날로 친다.
+/// (예: 리셋 4시면 새벽 2시는 아직 '어제', 새벽 5시부터 '오늘')
+enum DayBoundary {
+    /// App Group에 공유된 현재 리셋 시각(0~6). SettingsStore가 가벼운 Int로 기록.
+    static var resetHour: Int { AppGroup.defaults.integer(forKey: AppGroup.dayResetHourKey) }
+
+    static func dateKey(for date: Date, resetHour: Int) -> String {
+        let shifted = Calendar.gregorianSunday.date(byAdding: .hour, value: -resetHour, to: date) ?? date
+        return shifted.dateKey
+    }
+
+    static func todayKey(resetHour: Int) -> String { dateKey(for: Date(), resetHour: resetHour) }
+
+    /// 공유 리셋 시각 기준의 오늘 dateKey.
+    static var todayKey: String { todayKey(resetHour: resetHour) }
+
+    /// 해당 dateKey가 '오늘'인지. (yyyy-MM-dd 문자열은 사전순=시간순)
+    static func isToday(_ key: String) -> Bool { key == todayKey }
+
+    /// 해당 dateKey가 미래(오늘 이후)인지.
+    static func isFuture(_ key: String) -> Bool { key > todayKey }
 }

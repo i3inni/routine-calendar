@@ -11,6 +11,9 @@ struct LockScreenEntry: TimelineEntry {
 }
 
 extension LockScreenEntry {
+    /// 하루 리셋 시각(새벽 N시)을 반영한 '오늘' dateKey. (이 엔트리 시점 기준)
+    var todayKey: String { DayBoundary.dateKey(for: date, resetHour: DayBoundary.resetHour) }
+
     /// Xcode Preview / 위젯 갤러리용 샘플 데이터.
     static var sample: LockScreenEntry {
         let cal = Calendar.gregorianSunday

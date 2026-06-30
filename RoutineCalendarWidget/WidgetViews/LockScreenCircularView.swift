@@ -6,7 +6,7 @@ struct LockScreenCircularView: View {
     let entry: LockScreenEntry
 
     private var prog: (done: Int, total: Int, frac: Double) {
-        WidgetDataReader.dayProgress(entry: entry, dateKey: entry.date.dateKey)
+        WidgetDataReader.dayProgress(entry: entry, dateKey: entry.todayKey)
     }
 
     var body: some View {

@@ -105,7 +105,7 @@ final class RoutineStore {
         completion = merged
         onDataChanged?()   // 위젯 변경분으로 친구 공유용 오늘 요약 재업로드
         // 위젯이 오프라인/짧은 수명으로 서버에 못 보냈을 수 있으니 오늘치를 서버에 재반영(안전망)
-        let today = Date().dateKey
+        let today = DayBoundary.todayKey
         for r in routines {
             let id = r.id
             let count = completion[id]?[today] ?? 0
@@ -130,7 +130,8 @@ final class RoutineStore {
     }
 
     func streak(_ routine: Routine) -> Int {
-        var date = Date()
+        // 리셋 시각을 반영한 '논리적 오늘'부터 거슬러 센다
+        var date = Date.from(dateKey: DayBoundary.todayKey) ?? Date()
         // 오늘 예정이 아니면 어제부터 카운트
         if !routine.isScheduled(on: date) || !isDone(routine, date.dateKey) {
             date = Calendar.gregorianSunday.date(byAdding: .day, value: -1, to: date) ?? date
@@ -250,7 +251,7 @@ final class RoutineStore {
 
     /// 오후 9시 스트릭 가드 알림 업데이트 (오늘 예정된 루틴 기준)
     private func updateStreakGuard() {
-        let today = Date().dateKey
+        let today = DayBoundary.todayKey
         let remaining = scheduledRoutines(for: today).filter { !isDone($0, today) }.count
         NotificationManager.shared.scheduleStreakGuard(remainingCount: remaining)
     }
@@ -259,7 +260,7 @@ final class RoutineStore {
 
     /// 오늘 예정된 루틴의 완료/미완료 이름
     func todaySummary() -> (done: [String], remaining: [String]) {
-        let today = Date().dateKey
+        let today = DayBoundary.todayKey
         let scheduled = scheduledRoutines(for: today)
         let done = scheduled.filter { isDone($0, today) }.map(\.name)
         let remaining = scheduled.filter { !isDone($0, today) }.map(\.name)

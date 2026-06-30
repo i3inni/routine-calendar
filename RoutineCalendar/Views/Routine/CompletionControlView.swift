@@ -15,10 +15,7 @@ struct CompletionControlView: View {
 
     private var count: Int    { store.getCount(routine.id, dateKey) }
     private var isDone: Bool  { store.isDone(routine, dateKey) }
-    private var isFuture: Bool {
-        guard let date = Date.from(dateKey: dateKey) else { return false }
-        return date > Calendar.gregorianSunday.startOfDay(for: Date())
-    }
+    private var isFuture: Bool { DayBoundary.isFuture(dateKey) }
 
     var body: some View {
         mainControl

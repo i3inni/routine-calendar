@@ -88,6 +88,47 @@ struct SettingsView: View {
                         }
                     }
 
+                    // 하루 리셋 시각
+                    SectionLabel("하루 리셋 시각")
+                    SettingsCard(scheme: scheme) {
+                        HStack {
+                            Text("리셋 시각")
+                                .font(.rcBody)
+                                .foregroundStyle(Color.rcText(scheme))
+                            Spacer()
+                            HStack(spacing: 18) {
+                                Button { setDayResetHour(settings.dayResetHour - 1) } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(settings.dayResetHour <= 0 ? Color.rcText3(scheme).opacity(0.4) : Color.rcAccent(scheme))
+                                }
+                                .disabled(settings.dayResetHour <= 0)
+                                .buttonStyle(.plain)
+
+                                Text(hourLabel(settings.dayResetHour))
+                                    .font(.rcBody)
+                                    .foregroundStyle(Color.rcText(scheme))
+                                    .monospacedDigit()
+                                    .frame(minWidth: 78)
+                                    .multilineTextAlignment(.center)
+
+                                Button { setDayResetHour(settings.dayResetHour + 1) } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(settings.dayResetHour >= 6 ? Color.rcText3(scheme).opacity(0.4) : Color.rcAccent(scheme))
+                                }
+                                .disabled(settings.dayResetHour >= 6)
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding()
+                    }
+                    Text("이 시각이 지나야 다음 날 루틴으로 넘어가요. 예: 새벽 4시로 두면 새벽 3시에 체크한 건 전날 루틴이에요. (자정=0시면 기존과 동일)")
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(Color.rcText2(scheme))
+                        .padding(.horizontal, 20)
+                        .padding(.top, 6)
+
                     // 피드백
                     SectionLabel("의견 보내기")
                     SettingsCard(scheme: scheme) {
@@ -166,6 +207,19 @@ struct SettingsView: View {
         .onAppear {
             if nameDraft.isEmpty { nameDraft = session.currentUser?.nickname ?? "" }
         }
+    }
+
+    private func hourLabel(_ h: Int) -> String {
+        h == 0 ? "자정 (0시)" : "새벽 \(h)시"
+    }
+
+    /// 리셋 시각 변경: 로컬 저장(+위젯 반영) 후 서버에도 반영(친구뷰·리마인더 동기화).
+    private func setDayResetHour(_ raw: Int) {
+        let h = min(6, max(0, raw))
+        guard h != settings.dayResetHour else { return }
+        settings.dayResetHour = h
+        settings.save()
+        Task { try? await APIClient.shared.updateDayResetHour(h) }
     }
 
     /// 입력한 닉네임을 서버에 저장 (변경 없으면 무시).

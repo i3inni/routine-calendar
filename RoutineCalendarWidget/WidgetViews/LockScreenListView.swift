@@ -5,7 +5,7 @@ import WidgetKit
 struct LockScreenListView: View {
     let entry: LockScreenEntry
 
-    private var dateKey: String { entry.date.dateKey }
+    private var dateKey: String { entry.todayKey }
     private var scheduled: [Routine] {
         WidgetDataReader.scheduledRoutines(entry: entry, dateKey: dateKey)
     }

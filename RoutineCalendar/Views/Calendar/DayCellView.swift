@@ -5,8 +5,8 @@ struct CalendarCell {
     let isCurrentMonth: Bool
     var dateKey: String { date.dateKey }
     var day: Int { Calendar.gregorianSunday.component(.day, from: date) }
-    var isToday: Bool { Calendar.gregorianSunday.isDateInToday(date) }
-    var isFuture: Bool { date > Date() }
+    var isToday: Bool { DayBoundary.isToday(dateKey) }
+    var isFuture: Bool { DayBoundary.isFuture(dateKey) }
 }
 
 struct DayCellView: View {

@@ -10,10 +10,7 @@ struct DayPanelView: View {
     @Environment(\.colorScheme) private var scheme
 
     private var date: Date? { Date.from(dateKey: dateKey) }
-    private var isToday: Bool {
-        guard let d = date else { return false }
-        return Calendar.gregorianSunday.isDateInToday(d)
-    }
+    private var isToday: Bool { DayBoundary.isToday(dateKey) }
 
     private var weekdayLabel: String {
         guard let d = date else { return "" }

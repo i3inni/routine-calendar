@@ -23,7 +23,7 @@ struct FriendsWidgetView: View {
     @Environment(\.widgetRenderingMode) private var renderMode
 
     private var myProgress: (done: Int, total: Int, frac: Double) {
-        WidgetDataReader.dayProgress(entry: entry, dateKey: entry.date.dateKey)
+        WidgetDataReader.dayProgress(entry: entry, dateKey: entry.todayKey)
     }
     private let maxRows = 2   // 미디엄: 제목 + 친구 2명 (넘치면 "+N명 더")
     private var sortedFriends: [Friend] {

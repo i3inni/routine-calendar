@@ -96,6 +96,12 @@ struct RoutineCalendarApp: App {
         }
         routineStore.onDataChanged = uploadSummary
 
+        // 하루 리셋 시각을 서버 값으로 맞춤(다기기 동기화). 서버 미지원/구버전이면 nil → 무시.
+        if let h = session.currentUser?.dayResetHour, h != settingsStore.dayResetHour {
+            settingsStore.dayResetHour = h
+            settingsStore.save()
+        }
+
         // 루틴을 서버에서 동기화(계정 전환 감지 + 마이그레이션). 끝나면 요약도 갱신됨.
         if let uid = session.myUserId {
             await routineStore.syncOnLogin(userId: uid)

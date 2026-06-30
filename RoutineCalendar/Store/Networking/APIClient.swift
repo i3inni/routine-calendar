@@ -45,6 +45,7 @@ struct UserDTO: Decodable {
     let handle: String
     let nickname: String
     let profileImageUrl: String?
+    let dayResetHour: Int?    // 하루 리셋 시각(0~6). 서버 미지원/구버전이면 nil → 0 취급
 }
 
 struct FriendDTO: Decodable {
@@ -191,6 +192,12 @@ final class APIClient: @unchecked Sendable {
     /// 닉네임(친구에게 보이는 이름) 변경 → 갱신된 내 정보 반환.
     func updateNickname(_ nickname: String) async throws -> UserDTO {
         try await send("PATCH", "/me", body: ["nickname": nickname])
+    }
+
+    /// 하루 리셋 시각(새벽 0~6시) 변경 → 갱신된 내 정보 반환. (친구뷰·리마인더가 서버에서 같은 기준 사용)
+    @discardableResult
+    func updateDayResetHour(_ hour: Int) async throws -> UserDTO {
+        try await send("PATCH", "/me", body: ["dayResetHour": hour])
     }
 
     /// 계정 삭제 예약(3일 유예). 유예 내 재로그인하면 취소됨.
