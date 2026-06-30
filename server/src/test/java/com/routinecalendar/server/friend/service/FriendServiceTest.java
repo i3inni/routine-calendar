@@ -15,7 +15,8 @@ import com.routinecalendar.server.friend.domain.Poke;
 import com.routinecalendar.server.friend.repository.FriendRequestRepository;
 import com.routinecalendar.server.friend.repository.FriendshipRepository;
 import com.routinecalendar.server.friend.repository.PokeRepository;
-import com.routinecalendar.server.summary.repository.DailySummaryRepository;
+import com.routinecalendar.server.routine.repository.RoutineCompletionRepository;
+import com.routinecalendar.server.routine.repository.RoutineRepository;
 import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
 import java.time.Instant;
@@ -34,7 +35,9 @@ class FriendServiceTest {
     @Mock UserRepository userRepository;
     @Mock FriendshipRepository friendshipRepository;
     @Mock FriendRequestRepository friendRequestRepository;
-    @Mock DailySummaryRepository dailySummaryRepository;
+    @Mock RoutineRepository routineRepository;
+    @Mock RoutineCompletionRepository completionRepository;
+    @Mock FriendTodayCalculator todayCalculator;
     @Mock PokeRepository pokeRepository;
     @Mock ApplicationEventPublisher eventPublisher;
 
@@ -46,7 +49,8 @@ class FriendServiceTest {
     @BeforeEach
     void setUp() {
         friendService = new FriendService(userRepository, friendshipRepository,
-                friendRequestRepository, dailySummaryRepository, pokeRepository, eventPublisher);
+                friendRequestRepository, routineRepository, completionRepository,
+                todayCalculator, pokeRepository, eventPublisher);
     }
 
     @Test

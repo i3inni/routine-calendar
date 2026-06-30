@@ -3,6 +3,7 @@ package com.routinecalendar.server.routine.repository;
 import com.routinecalendar.server.routine.domain.Routine;
 import com.routinecalendar.server.user.domain.User;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,4 +33,16 @@ public interface RoutineRepository extends JpaRepository<Routine, UUID> {
               and (r.lastRemindedOn is null or r.lastRemindedOn < :today)
             """)
     List<Routine> findDueReminders(@Param("hhmm") String hhmm, @Param("today") LocalDate today);
+
+    /**
+     * 여러 사용자(친구들)의 활성 루틴을 한 번에 조회 — 친구 목록의 '오늘 요약' 계산용.
+     * user를 fetch join 해 사용자별 그룹핑 시 N+1 회피.
+     */
+    @Query("""
+            select r from Routine r
+            join fetch r.user
+            where r.user in :users
+              and r.deletedAt is null
+            """)
+    List<Routine> findActiveByUsers(@Param("users") Collection<User> users);
 }

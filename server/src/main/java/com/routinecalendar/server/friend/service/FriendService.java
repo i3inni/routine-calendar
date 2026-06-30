@@ -17,15 +17,20 @@ import com.routinecalendar.server.friend.dto.FriendDtos.FriendRequestResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendResponse;
 import com.routinecalendar.server.friend.dto.FriendDtos.SentFriendRequestResponse;
 import com.routinecalendar.server.friend.domain.FriendNudgedEvent;
-import com.routinecalendar.server.summary.domain.DailySummary;
-import com.routinecalendar.server.summary.repository.DailySummaryRepository;
+import com.routinecalendar.server.friend.service.FriendTodayCalculator.TodayStat;
+import com.routinecalendar.server.routine.domain.Routine;
+import com.routinecalendar.server.routine.domain.RoutineCompletion;
+import com.routinecalendar.server.routine.repository.RoutineCompletionRepository;
+import com.routinecalendar.server.routine.repository.RoutineRepository;
 import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,23 +44,32 @@ public class FriendService {
     private static final int NUDGE_LIMIT = 2;
     private static final Duration NUDGE_WINDOW = Duration.ofMinutes(30);
 
+    /** 친구 스트릭 계산 시 완료기록을 조회할 최대 과거 일수 (스트릭 상한과 일치) */
+    private static final int MAX_STREAK_LOOKBACK = 366;
+
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
     private final FriendRequestRepository friendRequestRepository;
-    private final DailySummaryRepository dailySummaryRepository;
+    private final RoutineRepository routineRepository;
+    private final RoutineCompletionRepository completionRepository;
+    private final FriendTodayCalculator todayCalculator;
     private final PokeRepository pokeRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public FriendService(UserRepository userRepository,
                          FriendshipRepository friendshipRepository,
                          FriendRequestRepository friendRequestRepository,
-                         DailySummaryRepository dailySummaryRepository,
+                         RoutineRepository routineRepository,
+                         RoutineCompletionRepository completionRepository,
+                         FriendTodayCalculator todayCalculator,
                          PokeRepository pokeRepository,
                          ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.friendRequestRepository = friendRequestRepository;
-        this.dailySummaryRepository = dailySummaryRepository;
+        this.routineRepository = routineRepository;
+        this.completionRepository = completionRepository;
+        this.todayCalculator = todayCalculator;
         this.pokeRepository = pokeRepository;
         this.eventPublisher = eventPublisher;
     }
@@ -73,9 +87,14 @@ public class FriendService {
         }
 
         LocalDate today = AppTime.today();
-        Map<Long, DailySummary> summaries = dailySummaryRepository
-                .findByUserInAndSummaryDate(friends, today).stream()
-                .collect(Collectors.toMap(s -> s.getUser().getId(), Function.identity()));
+
+        // '오늘 요약'을 친구의 루틴+완료기록으로 서버에서 즉석 계산한다.
+        // (클라가 올리는 DailySummary에 의존하지 않으므로, 친구가 앱을 안 열어도 항상 최신.)
+        // 친구 전체분을 배치 2번으로만 조회해 N+1을 피한다.
+        Map<Long, List<Routine>> routinesByUser = routineRepository.findActiveByUsers(friends).stream()
+                .collect(Collectors.groupingBy(r -> r.getUser().getId()));
+        Map<Long, Map<UUID, Map<LocalDate, Integer>>> countsByUser =
+                loadCounts(friends, today.minusDays(MAX_STREAK_LOOKBACK));
 
         // 친구별 자극 남은횟수/리셋시각 계산용 통계 (최근 30분)
         Map<Long, NudgeStat> nudgeStats = pokeRepository
@@ -83,8 +102,25 @@ public class FriendService {
                 .collect(Collectors.toMap(NudgeStat::getFriendId, Function.identity()));
 
         return friends.stream()
-                .map(u -> toFriendResponse(u, summaries.get(u.getId()), nudgeStats.get(u.getId())))
+                .map(u -> {
+                    TodayStat stat = todayCalculator.compute(
+                            routinesByUser.getOrDefault(u.getId(), List.of()),
+                            countsByUser.getOrDefault(u.getId(), Map.of()),
+                            today);
+                    return toFriendResponse(u, stat, nudgeStats.get(u.getId()));
+                })
                 .toList();
+    }
+
+    /** 친구들의 since 이후 완료기록을 userId → routineId → (날짜 → 카운트)로 묶는다. */
+    private Map<Long, Map<UUID, Map<LocalDate, Integer>>> loadCounts(List<User> friends, LocalDate since) {
+        Map<Long, Map<UUID, Map<LocalDate, Integer>>> byUser = new HashMap<>();
+        for (RoutineCompletion c : completionRepository.findByUserInAndCompletionDateGreaterThanEqual(friends, since)) {
+            byUser.computeIfAbsent(c.getUser().getId(), k -> new HashMap<>())
+                    .computeIfAbsent(c.getRoutine().getId(), k -> new HashMap<>())
+                    .put(c.getCompletionDate(), c.getCount());
+        }
+        return byUser;
     }
 
     // MARK: - 친구 요청 보내기
@@ -209,22 +245,17 @@ public class FriendService {
         return f.getUserLow().getId().equals(me.getId()) ? f.getUserHigh() : f.getUserLow();
     }
 
-    private FriendResponse toFriendResponse(User user, DailySummary summary, NudgeStat nudge) {
+    private FriendResponse toFriendResponse(User user, TodayStat stat, NudgeStat nudge) {
         long used = (nudge != null) ? nudge.getCnt() : 0;
         int nudgeRemaining = (int) Math.max(0, NUDGE_LIMIT - used);
         // 0회 남았으면 가장 오래된 자극 + 30분에 다시 가능 (epoch ms)
         Long nudgeResetAtMs = (nudgeRemaining == 0 && nudge != null)
                 ? nudge.getOldest().plus(NUDGE_WINDOW).toEpochMilli() : null;
 
-        if (summary == null) {
-            return new FriendResponse(user.getId(), user.getHandle(), user.getNickname(),
-                    user.getProfileImageUrl(), 0, 0, 0, List.of(), List.of(),
-                    nudgeRemaining, nudgeResetAtMs);
-        }
         return new FriendResponse(user.getId(), user.getHandle(), user.getNickname(),
                 user.getProfileImageUrl(),
-                summary.getDoneCount(), summary.getTotalCount(), summary.getStreak(),
-                summary.getDoneNames(), summary.getRemainingNames(),
+                stat.doneCount(), stat.totalCount(), stat.streak(),
+                stat.done(), stat.remaining(),
                 nudgeRemaining, nudgeResetAtMs);
     }
 
