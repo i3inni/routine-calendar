@@ -46,7 +46,7 @@ struct FriendsView: View {
                             // 친구 요청 — 요청이 있을 때만 종 아이콘(받은 개수 배지) → 시트
                             if hasRequests {
                                 Button { showRequestsSheet = true } label: {
-                                    Image(systemName: "bell.fill")
+                                    Image(systemName: "person.fill")
                                         .font(.system(size: 15, weight: .semibold))
                                         .foregroundStyle(Color.rcText2(scheme))
                                         .frame(width: 36, height: 36)
