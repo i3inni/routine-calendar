@@ -86,15 +86,14 @@ public class FriendService {
             return List.of();
         }
 
-        LocalDate today = AppTime.today();
-
         // '오늘 요약'을 친구의 루틴+완료기록으로 서버에서 즉석 계산한다.
         // (클라가 올리는 DailySummary에 의존하지 않으므로, 친구가 앱을 안 열어도 항상 최신.)
         // 친구 전체분을 배치 2번으로만 조회해 N+1을 피한다.
+        // 완료기록은 친구마다 리셋시각이 달라도 커버되게 +1일 여유를 두고 조회한다.
         Map<Long, List<Routine>> routinesByUser = routineRepository.findActiveByUsers(friends).stream()
                 .collect(Collectors.groupingBy(r -> r.getUser().getId()));
         Map<Long, Map<UUID, Map<LocalDate, Integer>>> countsByUser =
-                loadCounts(friends, today.minusDays(MAX_STREAK_LOOKBACK));
+                loadCounts(friends, AppTime.today().minusDays(MAX_STREAK_LOOKBACK + 1));
 
         // 친구별 자극 남은횟수/리셋시각 계산용 통계 (최근 30분)
         Map<Long, NudgeStat> nudgeStats = pokeRepository
@@ -103,10 +102,12 @@ public class FriendService {
 
         return friends.stream()
                 .map(u -> {
+                    // 친구의 하루 리셋 시각을 반영한 '그 사람의 오늘'
+                    LocalDate friendToday = AppTime.logicalToday(u.getDayResetHour());
                     TodayStat stat = todayCalculator.compute(
                             routinesByUser.getOrDefault(u.getId(), List.of()),
                             countsByUser.getOrDefault(u.getId(), Map.of()),
-                            today);
+                            friendToday);
                     return toFriendResponse(u, stat, nudgeStats.get(u.getId()));
                 })
                 .toList();

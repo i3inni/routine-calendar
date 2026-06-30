@@ -69,12 +69,17 @@ public class UserService {
         return user.getDeletionRequestedAt().plus(DELETION_GRACE);
     }
 
-    /** 닉네임(친구에게 보이는 이름) 변경. */
+    /** 내 정보 변경: 전달된 필드만 갱신(닉네임 / 하루 리셋 시각). */
     @Transactional
-    public User updateNickname(Long userId, String nickname) {
+    public User updateMe(Long userId, String nickname, Integer dayResetHour) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        user.updateNickname(nickname.trim());
+        if (nickname != null && !nickname.isBlank()) {
+            user.updateNickname(nickname.trim());
+        }
+        if (dayResetHour != null) {
+            user.updateDayResetHour(dayResetHour);
+        }
         return user;
     }
 

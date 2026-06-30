@@ -7,7 +7,7 @@ import com.routinecalendar.server.user.service.UserService;
 import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
 import com.routinecalendar.server.user.dto.MeDtos.DeletionResponse;
-import com.routinecalendar.server.user.dto.MeDtos.UpdateNicknameRequest;
+import com.routinecalendar.server.user.dto.MeDtos.UpdateMeRequest;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -39,11 +39,11 @@ public class MeController {
         return UserResponse.from(user);
     }
 
-    /** 닉네임(친구에게 보이는 이름) 변경. */
+    /** 내 정보(닉네임 / 하루 리셋 시각) 변경. 보낸 필드만 갱신. */
     @PatchMapping("/me")
     public UserResponse updateMe(@AuthenticationPrincipal Long userId,
-                                 @Valid @RequestBody UpdateNicknameRequest request) {
-        User user = userService.updateNickname(userId, request.nickname());
+                                 @Valid @RequestBody UpdateMeRequest request) {
+        User user = userService.updateMe(userId, request.nickname(), request.dayResetHour());
         return UserResponse.from(user);
     }
 

@@ -46,6 +46,10 @@ public class User {
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
+    /** 하루 리셋 시각(새벽 0~6시). '오늘'을 자정 대신 이 시각 기준으로 본다. 0 = 자정(기본). */
+    @Column(name = "day_reset_hour", nullable = false)
+    private int dayResetHour;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -75,6 +79,11 @@ public class User {
     /** 친구에게 표시되는 이름(닉네임) 변경. */
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    /** 하루 리셋 시각 변경(0~6시로 클램프). */
+    public void updateDayResetHour(int hour) {
+        this.dayResetHour = Math.max(0, Math.min(6, hour));
     }
 
     /** 애플 계정에 카카오 연동(친구찾기용 kakaoId 저장). */

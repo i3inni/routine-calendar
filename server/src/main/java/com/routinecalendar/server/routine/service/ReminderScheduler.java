@@ -43,31 +43,35 @@ public class ReminderScheduler {
     @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")   // 매분 0초 (KST)
     @Transactional
     public void sendDueReminders() {
-        LocalDate today = AppTime.today();
-        int weekday = today.getDayOfWeek().getValue() % 7;   // java 1=월…7=일 → 0=일…6=토
+        // dedup/조회 기준은 캘린더 오늘(KST). 요일/예정/완료 판정은 각 사용자 '논리적 오늘'.
+        LocalDate calendarToday = AppTime.today();
         String hhmm = LocalTime.now(AppTime.KST).format(HHMM);
 
-        List<Routine> due = routineRepository.findDueReminders(hhmm, today);
+        List<Routine> due = routineRepository.findDueReminders(hhmm, calendarToday);
         if (due.isEmpty()) {
             return;
         }
 
         int sent = 0;
         for (Routine r : due) {
+            // 사용자별 하루 리셋 시각을 반영한 '그 사람의 오늘'
+            LocalDate ownerToday = AppTime.logicalToday(r.getUser().getDayResetHour());
+            int weekday = ownerToday.getDayOfWeek().getValue() % 7;   // 0=일 … 6=토
             if (!r.isScheduledOn(weekday)) {
                 continue;   // 오늘 예정 요일 아님 → 평가/발송 안 함
             }
             // 시작 전(시작일이 미래)이거나 종료된(종료일 당일/이후) 루틴은 발송 대상 아님
             LocalDate startDay = LocalDate.ofInstant(r.getCreatedAt(), AppTime.KST);
-            if (today.isBefore(startDay)) {
+            if (ownerToday.isBefore(startDay)) {
                 continue;   // 아직 시작 안 함
             }
-            if (r.getEndDate() != null && !today.isBefore(r.getEndDate())) {
-                continue;   // today >= endDate → 종료됨
+            if (r.getEndDate() != null && !ownerToday.isBefore(r.getEndDate())) {
+                continue;   // ownerToday >= endDate → 종료됨
             }
-            r.markReminded(today);   // 오늘 처리함(중복 발송 방지, dirty checking으로 UPDATE)
+            // 중복 발송 방지는 캘린더 오늘로 마킹(findDueReminders 필터와 일치)
+            r.markReminded(calendarToday);
 
-            boolean done = completionRepository.findByRoutineAndCompletionDate(r, today)
+            boolean done = completionRepository.findByRoutineAndCompletionDate(r, ownerToday)
                     .map(c -> c.getCount() >= r.getTarget())
                     .orElse(false);
             if (done) {
@@ -77,6 +81,6 @@ public class ReminderScheduler {
                     "오늘 이 루틴을 완료할 시간이에요", "routine");
             sent++;
         }
-        log.info("[리마인더] {} {} KST — 대상 {}건, 발송 {}건", today, hhmm, due.size(), sent);
+        log.info("[리마인더] {} {} KST — 대상 {}건, 발송 {}건", calendarToday, hhmm, due.size(), sent);
     }
 }

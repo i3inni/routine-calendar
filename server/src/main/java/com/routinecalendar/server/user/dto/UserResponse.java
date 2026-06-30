@@ -5,14 +5,16 @@ public record UserResponse(
         Long id,
         String handle,
         String nickname,
-        String profileImageUrl
+        String profileImageUrl,
+        int dayResetHour
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
                 user.getId(),
                 user.getHandle(),
                 user.getNickname(),
-                user.getProfileImageUrl()
+                user.getProfileImageUrl(),
+                user.getDayResetHour()
         );
     }
 }
