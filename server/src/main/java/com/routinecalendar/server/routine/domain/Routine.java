@@ -19,7 +19,6 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
@@ -67,9 +66,14 @@ public class Routine implements Persistable<UUID> {
     @Column(name = "repeat_days", nullable = false)
     private List<Integer> repeatDays = new ArrayList<>();
 
-    @CreationTimestamp
+    // 시작일: 클라(iOS)가 캘린더에서 선택한 날짜. 이 날짜(당일 포함)부터 루틴이 노출된다.
+    // 자동 타임스탬프(@CreationTimestamp)를 쓰지 않고 클라가 보낸 값을 그대로 영속화한다.
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    // 종료일: 이 날짜(당일 포함)부터 루틴이 사라진다(nil = 무기한). 이전 기록은 보존.
+    @Column(name = "end_date")
+    private LocalDate endDate;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
@@ -87,7 +91,8 @@ public class Routine implements Persistable<UUID> {
     private boolean isNew = true;
 
     public Routine(UUID id, User user, String name, String type, int target, String unit,
-                   String reminder, boolean anytime, String repeatMode, List<Integer> repeatDays) {
+                   String reminder, boolean anytime, String repeatMode, List<Integer> repeatDays,
+                   Instant createdAt, LocalDate endDate) {
         this.id = id;
         this.user = user;
         this.name = name;
@@ -98,10 +103,13 @@ public class Routine implements Persistable<UUID> {
         this.anytime = anytime;
         this.repeatMode = repeatMode;
         this.repeatDays = repeatDays != null ? repeatDays : new ArrayList<>();
+        this.createdAt = createdAt != null ? createdAt : Instant.now();
+        this.endDate = endDate;
     }
 
     public void update(String name, String type, int target, String unit, String reminder,
-                       boolean anytime, String repeatMode, List<Integer> repeatDays) {
+                       boolean anytime, String repeatMode, List<Integer> repeatDays,
+                       LocalDate endDate) {
         this.name = name;
         this.type = type;
         this.target = target;
@@ -110,6 +118,7 @@ public class Routine implements Persistable<UUID> {
         this.anytime = anytime;
         this.repeatMode = repeatMode;
         this.repeatDays = repeatDays != null ? repeatDays : new ArrayList<>();
+        this.endDate = endDate;
     }
 
     public void markDeleted() {

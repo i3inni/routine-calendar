@@ -57,6 +57,14 @@ public class ReminderScheduler {
             if (!r.isScheduledOn(weekday)) {
                 continue;   // 오늘 예정 요일 아님 → 평가/발송 안 함
             }
+            // 시작 전(시작일이 미래)이거나 종료된(종료일 당일/이후) 루틴은 발송 대상 아님
+            LocalDate startDay = LocalDate.ofInstant(r.getCreatedAt(), AppTime.KST);
+            if (today.isBefore(startDay)) {
+                continue;   // 아직 시작 안 함
+            }
+            if (r.getEndDate() != null && !today.isBefore(r.getEndDate())) {
+                continue;   // today >= endDate → 종료됨
+            }
             r.markReminded(today);   // 오늘 처리함(중복 발송 방지, dirty checking으로 UPDATE)
 
             boolean done = completionRepository.findByRoutineAndCompletionDate(r, today)

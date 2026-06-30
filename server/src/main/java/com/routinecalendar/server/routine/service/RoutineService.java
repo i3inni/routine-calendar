@@ -51,7 +51,8 @@ public class RoutineService {
         UUID id = request.id() != null ? request.id() : UUID.randomUUID();
         Routine routine = new Routine(id, me, request.name(), request.typeOrDefault(),
                 request.target(), request.unitOrEmpty(), request.reminder(), request.anytime(),
-                request.repeatModeOrDefault(), request.repeatDaysOrEmpty());
+                request.repeatModeOrDefault(), request.repeatDaysOrEmpty(),
+                request.createdAt(), request.endDate());
         return RoutineResponse.from(routineRepository.save(routine));
     }
 
@@ -60,7 +61,8 @@ public class RoutineService {
         Routine routine = getMyRoutine(meId, routineId);
         routine.update(request.name(), request.typeOrDefault(), request.target(),
                 request.unitOrEmpty(), request.reminder(), request.anytime(),
-                request.repeatModeOrDefault(), request.repeatDaysOrEmpty());
+                request.repeatModeOrDefault(), request.repeatDaysOrEmpty(),
+                request.endDate());
         return RoutineResponse.from(routine);
     }
 

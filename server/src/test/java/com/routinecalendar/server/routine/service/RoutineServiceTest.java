@@ -17,6 +17,7 @@ import com.routinecalendar.server.routine.repository.RoutineCompletionRepository
 import com.routinecalendar.server.routine.repository.RoutineRepository;
 import com.routinecalendar.server.user.domain.User;
 import com.routinecalendar.server.user.repository.UserRepository;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -45,7 +46,7 @@ class RoutineServiceTest {
 
     private RoutineRequest sampleRequest(UUID id) {
         return new RoutineRequest(id, "아침 스트레칭", "check", 1, "", "07:00", false,
-                "custom", List.of(1, 2, 3));
+                "custom", List.of(1, 2, 3), null, null);
     }
 
     @Test
@@ -65,7 +66,8 @@ class RoutineServiceTest {
     @Test
     void 내_루틴은_수정된다() {
         UUID id = UUID.randomUUID();
-        Routine routine = new Routine(id, me, "옛이름", "check", 1, "", null, true, "daily", List.of());
+        Routine routine = new Routine(id, me, "옛이름", "check", 1, "", null, true, "daily", List.of(),
+                Instant.now(), null);
         when(userRepository.findById(1L)).thenReturn(Optional.of(me));
         when(routineRepository.findByIdAndUserAndDeletedAtIsNull(id, me)).thenReturn(Optional.of(routine));
 
@@ -91,7 +93,8 @@ class RoutineServiceTest {
     @Test
     void 루틴_삭제는_soft_delete로_처리된다() {
         UUID id = UUID.randomUUID();
-        Routine routine = new Routine(id, me, "이름", "check", 1, "", null, true, "daily", List.of());
+        Routine routine = new Routine(id, me, "이름", "check", 1, "", null, true, "daily", List.of(),
+                Instant.now(), null);
         when(userRepository.findById(1L)).thenReturn(Optional.of(me));
         when(routineRepository.findByIdAndUserAndDeletedAtIsNull(id, me)).thenReturn(Optional.of(routine));
 
@@ -104,7 +107,8 @@ class RoutineServiceTest {
     void 완료_카운트는_기존행이_있으면_갱신된다() {
         UUID id = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 6, 10);
-        Routine routine = new Routine(id, me, "이름", "count", 3, "회", null, true, "daily", List.of());
+        Routine routine = new Routine(id, me, "이름", "count", 3, "회", null, true, "daily", List.of(),
+                Instant.now(), null);
         RoutineCompletion existing = new RoutineCompletion(me, routine, date, 1);
         when(userRepository.findById(1L)).thenReturn(Optional.of(me));
         when(routineRepository.findByIdAndUserAndDeletedAtIsNull(id, me)).thenReturn(Optional.of(routine));
@@ -120,7 +124,8 @@ class RoutineServiceTest {
     void 완료_카운트는_기존행이_없으면_새로_생성된다() {
         UUID id = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 6, 10);
-        Routine routine = new Routine(id, me, "이름", "count", 3, "회", null, true, "daily", List.of());
+        Routine routine = new Routine(id, me, "이름", "count", 3, "회", null, true, "daily", List.of(),
+                Instant.now(), null);
         when(userRepository.findById(1L)).thenReturn(Optional.of(me));
         when(routineRepository.findByIdAndUserAndDeletedAtIsNull(id, me)).thenReturn(Optional.of(routine));
         when(completionRepository.findByRoutineAndCompletionDate(routine, date)).thenReturn(Optional.empty());

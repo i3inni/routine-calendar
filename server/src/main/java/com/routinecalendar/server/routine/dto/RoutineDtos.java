@@ -24,7 +24,9 @@ public final class RoutineDtos {
             String reminder,
             boolean anytime,
             String repeatMode,
-            List<Integer> repeatDays
+            List<Integer> repeatDays,
+            Instant createdAt,    // 시작일(클라가 선택한 날짜). null이면 서버가 now()
+            LocalDate endDate     // 종료일(당일부터 사라짐). null = 무기한
     ) {
         public String typeOrDefault() {
             return type != null ? type : "check";
@@ -54,12 +56,13 @@ public final class RoutineDtos {
             boolean anytime,
             String repeatMode,
             List<Integer> repeatDays,
-            Instant createdAt
+            Instant createdAt,
+            LocalDate endDate
     ) {
         public static RoutineResponse from(Routine r) {
             return new RoutineResponse(r.getId(), r.getName(), r.getType(), r.getTarget(),
                     r.getUnit(), r.getReminder(), r.isAnytime(), r.getRepeatMode(),
-                    r.getRepeatDays(), r.getCreatedAt());
+                    r.getRepeatDays(), r.getCreatedAt(), r.getEndDate());
         }
     }
 

@@ -14,6 +14,7 @@ import com.routinecalendar.server.routine.domain.RoutineCompletion;
 import com.routinecalendar.server.routine.repository.RoutineCompletionRepository;
 import com.routinecalendar.server.routine.repository.RoutineRepository;
 import com.routinecalendar.server.user.domain.User;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,7 +40,8 @@ class ReminderSchedulerTest {
     }
 
     private Routine daily(String name, int target) {
-        return new Routine(UUID.randomUUID(), me, name, "check", target, "", "09:00", false, "daily", List.of());
+        return new Routine(UUID.randomUUID(), me, name, "check", target, "", "09:00", false, "daily",
+                List.of(), Instant.now(), null);
     }
 
     @Test
@@ -73,7 +75,7 @@ class ReminderSchedulerTest {
         int todayWd = AppTime.today().getDayOfWeek().getValue() % 7;   // 0=일 … 6=토
         int otherDay = (todayWd + 1) % 7;
         Routine r = new Routine(UUID.randomUUID(), me, "특정요일루틴", "check", 1, "", "09:00", false,
-                "custom", List.of(otherDay));
+                "custom", List.of(otherDay), Instant.now(), null);
         when(routineRepository.findDueReminders(any(), any())).thenReturn(List.of(r));
 
         scheduler.sendDueReminders();
