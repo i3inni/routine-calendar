@@ -120,7 +120,7 @@ struct FriendCardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .sheet(isPresented: $showNudgeSheet) {
             NudgeSheetView(friend: friend)
-                .presentationDetents([.height(420)])
+                .presentationDetents([.height(360)])
                 .presentationDragIndicator(.visible)
         }
         // 위젯 "자극하기" 딥링크로 이 친구가 지목되면 자극 시트 열기
@@ -139,14 +139,16 @@ private struct NudgeSheetView: View {
     let friend: Friend
 
     @Environment(FriendsStore.self) private var friendsStore
+    @Environment(SettingsStore.self) private var settings
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var scheme
 
     @State private var text = ""
     @State private var isSending = false
     @State private var errorMessage: String?
+    @State private var editingPresets = false
 
-    private let presets = ["얼른 루틴 시작해!", "오늘도 화이팅", "딱 하나만 더!", "나 벌써 다 했지롱"]
+    private var presets: [String] { settings.nudgePresets }   // 사용자가 정한 빠른 멘트
     private let maxLength = 50
 
     private var trimmed: String {
@@ -154,9 +156,11 @@ private struct NudgeSheetView: View {
     }
 
     var body: some View {
-        ZStack {
+        @Bindable var settings = settings
+        return ZStack {
             Color.rcBg(scheme).ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 16) {
+            ScrollView {
+              VStack(alignment: .leading, spacing: 16) {
                 // 제목
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(friend.name)님 자극하기")
@@ -168,9 +172,37 @@ private struct NudgeSheetView: View {
                 }
                 .padding(.top, 12)
 
-                // 빠른 멘트 칩
-                FlowChips(presets: presets, scheme: scheme) { preset in
-                    text = preset
+                // 빠른 멘트 (편집 가능)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(editingPresets ? "빠른 멘트 편집" : "빠른 멘트")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.rcText2(scheme))
+                        Spacer()
+                        Button {
+                            if editingPresets { settings.save() }   // 완료 시 저장
+                            withAnimation(.easeInOut(duration: 0.18)) { editingPresets.toggle() }
+                        } label: {
+                            Text(editingPresets ? "완료" : "편집")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.rcAccent(scheme))
+                        }
+                    }
+
+                    if editingPresets {
+                        presetField($settings.nudgePreset1, "멘트 1 (예: 얼른 루틴 시작해!)")
+                        presetField($settings.nudgePreset2, "멘트 2 (예: 오늘도 화이팅)")
+                    } else if !presets.isEmpty {
+                        FlowChips(presets: presets, selected: trimmed, scheme: scheme) { preset in
+                            text = preset
+                        }
+                    } else {
+                        Text("‘편집’을 눌러 자주 쓰는 멘트를 등록해보세요.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.rcText3(scheme))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                    }
                 }
 
                 // 입력
@@ -185,11 +217,21 @@ private struct NudgeSheetView: View {
                     TextField("", text: $text, axis: .vertical)
                         .font(.system(size: 15))
                         .foregroundStyle(Color.rcText(scheme))
-                        .padding(10)
+                        .padding(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 36))
                         .frame(minHeight: 70, alignment: .topLeading)
                         .onChange(of: text) { _, new in
                             if new.count > maxLength { text = String(new.prefix(maxLength)) }
                         }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if !text.isEmpty {
+                        Button { text = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 17))
+                                .foregroundStyle(Color.rcText3(scheme))
+                        }
+                        .padding(8)
+                    }
                 }
                 .background(Color.rcCard(scheme), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
@@ -215,23 +257,45 @@ private struct NudgeSheetView: View {
                         } else {
                             Text("자극 보내기")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color.rcAccentText(scheme))
+                                .foregroundStyle(trimmed.isEmpty ? Color.rcText3(scheme) : Color.rcAccentText(scheme))
                         }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                     .background(
-                        (trimmed.isEmpty ? Color.rcText3(scheme) : Color.rcAccent(scheme)),
+                        (trimmed.isEmpty ? Color.rcCard2(scheme) : Color.rcAccent(scheme)),
                         in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                     )
                 }
                 .disabled(trimmed.isEmpty || isSending)
 
-                Spacer(minLength: 0)
+              }
+              .padding(.horizontal, 22)
+              .padding(.top, 8)
+              .padding(.bottom, 12)
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 8)
+            .scrollBounceBehavior(.basedOnSize)
         }
+        // 편집 중 닫으면 입력분 유실 방지
+        .onDisappear { if editingPresets { settings.save() } }
+    }
+
+    /// 빠른 멘트 편집 입력칸 (최대 13자)
+    private func presetField(_ value: Binding<String>, _ placeholder: String) -> some View {
+        TextField(placeholder, text: value)
+            .font(.system(size: 14))
+            .foregroundStyle(Color.rcText(scheme))
+            .submitLabel(.done)
+            .onChange(of: value.wrappedValue) { _, new in
+                if new.count > 13 { value.wrappedValue = String(new.prefix(13)) }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(Color.rcCard(scheme), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.rcSeparator(scheme), lineWidth: 1)
+            )
     }
 
     private func send() async {
@@ -258,6 +322,7 @@ private struct NudgeSheetView: View {
 
 private struct FlowChips: View {
     let presets: [String]
+    let selected: String      // 현재 입력값과 일치하는 칩을 강조
     let scheme: ColorScheme
     let onTap: (String) -> Void
 
@@ -266,20 +331,21 @@ private struct FlowChips: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 10) {
             ForEach(presets, id: \.self) { preset in
+                let isSelected = (selected == preset)
                 Button { onTap(preset) } label: {
                     Text(preset)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.rcAccent(scheme))
+                        .foregroundStyle(isSelected ? Color.rcAccentText(scheme) : Color.rcAccent(scheme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .padding(.horizontal, 8)
-                        .background(Color.rcAccent(scheme).opacity(0.12),
+                        .background(isSelected ? Color.rcAccent(scheme) : Color.rcCard(scheme),
                                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.rcAccent(scheme).opacity(0.25), lineWidth: 1)
+                                .stroke(Color.rcAccent(scheme), lineWidth: isSelected ? 0 : 1.5)
                         )
                 }
                 .buttonStyle(.plain)

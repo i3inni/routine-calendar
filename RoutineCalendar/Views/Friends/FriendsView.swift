@@ -7,13 +7,16 @@ struct FriendsView: View {
 
     @State private var showAddSheet = false
     @State private var prefillId: String?
-    @State private var requestTab: RequestTab = .received
-
-    private enum RequestTab { case received, sent }
+    @State private var showRequestsSheet = false
 
     private var sortedFriends: [Friend] {
         friendsStore.friends.sorted { !$0.isAllDone && $1.isAllDone }
     }
+
+    private var hasRequests: Bool {
+        !friendsStore.incomingRequests.isEmpty || !friendsStore.outgoingRequests.isEmpty
+    }
+    private var receivedCount: Int { friendsStore.incomingRequests.count }
 
     private var notDoneCount: Int {
         friendsStore.friends.filter { !$0.isAllDone }.count
@@ -39,54 +42,39 @@ struct FriendsView: View {
                                 .foregroundStyle(Color.rcText2(scheme))
                         }
                         Spacer()
-                        Button { showAddSheet = true } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Color.rcAccent(scheme))
-                                .frame(width: 36, height: 36)
-                                .background(Color.rcCard(scheme), in: Circle())
+                        HStack(spacing: 10) {
+                            // 친구 요청 — 요청이 있을 때만 종 아이콘(받은 개수 배지) → 시트
+                            if hasRequests {
+                                Button { showRequestsSheet = true } label: {
+                                    Image(systemName: "bell.fill")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(Color.rcText2(scheme))
+                                        .frame(width: 36, height: 36)
+                                        .background(Color.rcCard(scheme), in: Circle())
+                                        .overlay(alignment: .topTrailing) {
+                                            if receivedCount > 0 {
+                                                Text("\(receivedCount)")
+                                                    .font(.system(size: 11, weight: .bold))
+                                                    .foregroundStyle(.white)
+                                                    .padding(.horizontal, 5).padding(.vertical, 1)
+                                                    .background(Color.rcDestructive, in: Capsule())
+                                                    .offset(x: 4, y: -3)
+                                            }
+                                        }
+                                }
+                            }
+                            Button { showAddSheet = true } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(Color.rcAccent(scheme))
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.rcCard(scheme), in: Circle())
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                     .padding(.bottom, 16)
-
-                    // 친구 요청 (받은/보낸 탭)
-                    if !friendsStore.incomingRequests.isEmpty || !friendsStore.outgoingRequests.isEmpty {
-                        Picker("", selection: $requestTab) {
-                            Text("받은 \(friendsStore.incomingRequests.count)").tag(RequestTab.received)
-                            Text("보낸 \(friendsStore.outgoingRequests.count)").tag(RequestTab.sent)
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
-
-                        VStack(spacing: 10) {
-                            if requestTab == .received {
-                                if friendsStore.incomingRequests.isEmpty {
-                                    emptyRequestText("받은 요청이 없어요")
-                                } else {
-                                    ForEach(friendsStore.incomingRequests) { request in
-                                        RequestRowView(
-                                            request: request,
-                                            onAccept: { Task { await friendsStore.acceptRequest(request) } },
-                                            onDecline: { Task { await friendsStore.declineRequest(request) } }
-                                        )
-                                    }
-                                }
-                            } else {
-                                if friendsStore.outgoingRequests.isEmpty {
-                                    emptyRequestText("보낸 요청이 없어요")
-                                } else {
-                                    ForEach(friendsStore.outgoingRequests) { request in
-                                        SentRequestRowView(request: request)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
-                    }
 
                     // Friend cards with custom swipe-to-delete
                     VStack(spacing: 12) {
@@ -126,6 +114,11 @@ struct FriendsView: View {
         .sheet(isPresented: $showAddSheet) {
             AddFriendSheetView(prefillId: prefillId)
         }
+        .sheet(isPresented: $showRequestsSheet) {
+            FriendRequestsSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         // 딥링크로 들어온 친구 ID → 시트 열고 자동 입력
         .onChange(of: deepLink.pendingFriendHandle) { _, new in
             consumeDeepLink(new)
@@ -147,12 +140,82 @@ struct FriendsView: View {
         deepLink.pendingFriendHandle = nil   // 1회 소비
     }
 
-    private func emptyRequestText(_ text: String) -> some View {
+}
+
+// MARK: - 친구 요청 시트 (받은/보낸)
+
+private struct FriendRequestsSheet: View {
+    @Environment(FriendsStore.self) private var friendsStore
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var tab: RequestTab = .received
+    private enum RequestTab { case received, sent }
+
+    var body: some View {
+        let received = friendsStore.incomingRequests.count
+        let sent = friendsStore.outgoingRequests.count
+
+        ZStack {
+            Color.rcBg(scheme).ignoresSafeArea()
+            VStack(spacing: 0) {
+                Text("친구 요청")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color.rcText(scheme))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                    .padding(.bottom, 14)
+
+                Picker("", selection: $tab) {
+                    Text("받은 \(received)").tag(RequestTab.received)
+                    Text("보낸 \(sent)").tag(RequestTab.sent)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
+
+                ScrollView {
+                    VStack(spacing: 10) {
+                        if tab == .received {
+                            if friendsStore.incomingRequests.isEmpty {
+                                emptyText("받은 요청이 없어요")
+                            } else {
+                                ForEach(friendsStore.incomingRequests) { request in
+                                    RequestRowView(
+                                        request: request,
+                                        onAccept: { Task { await friendsStore.acceptRequest(request) } },
+                                        onDecline: { Task { await friendsStore.declineRequest(request) } }
+                                    )
+                                }
+                            }
+                        } else {
+                            if friendsStore.outgoingRequests.isEmpty {
+                                emptyText("보낸 요청이 없어요")
+                            } else {
+                                ForEach(friendsStore.outgoingRequests) { request in
+                                    SentRequestRowView(request: request)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+                }
+            }
+        }
+        // 모든 요청이 사라지면(수락/거절 완료) 시트 자동 닫기
+        .onChange(of: received + sent) { _, total in
+            if total == 0 { dismiss() }
+        }
+    }
+
+    private func emptyText(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 14))
             .foregroundStyle(Color.rcText3(scheme))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
+            .padding(.vertical, 40)
     }
 }
 
