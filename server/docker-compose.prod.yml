@@ -1,0 +1,46 @@
+# 운영용 compose (EC2에서 사용).
+#   실행:  docker compose -f docker-compose.prod.yml up -d --build
+#
+# 개발용 docker-compose.yml 과의 차이:
+#   - 비밀번호/시크릿을 하드코딩하지 않고 .env 에서 주입받는다 (커밋 금지).
+#   - DEV_LOGIN_ENABLED 는 기본 false (개발용 무인증 로그인 차단).
+#   - postgres 포트를 호스트로 노출하지 않는다 (컨테이너 네트워크 안에서만 접근).
+#
+# Phase 2 에서 server 의 `build: .` 를 `image: <계정>/routine-server:latest` 로 바꾼다.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: routine-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-routine_calendar}
+      POSTGRES_USER: ${DB_USERNAME:-routine}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD 를 .env 에 설정하세요}
+    volumes:
+      - routine-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-routine} -d ${DB_NAME:-routine_calendar}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build: .
+    container_name: routine-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # 컨테이너 네트워크 안에서 DB 호스트는 서비스명(postgres)이다.
+      # .env 의 DB_URL(로컬용 localhost) 을 여기서 덮어써 컨테이너용으로 고정한다.
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-routine_calendar}
+      DEV_LOGIN_ENABLED: "false"
+    ports:
+      - "8080:8080"
+
+volumes:
+  routine-pgdata:
