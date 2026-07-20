@@ -40,7 +40,9 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-routine_calendar}
       DEV_LOGIN_ENABLED: "false"
     ports:
-      - "8080:8080"
+      # 호스트의 127.0.0.1(루프백)에만 바인딩 → 외부에서 8080 직접 접근 불가.
+      # 앞단 Nginx(호스트)만 127.0.0.1:8080 으로 프록시한다.
+      - "127.0.0.1:8080:8080"
 
 volumes:
   routine-pgdata:
