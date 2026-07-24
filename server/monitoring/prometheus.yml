@@ -1,0 +1,26 @@
+# Prometheus 스크레이프 설정.
+# 같은 compose 네트워크 안이라 서비스명으로 서로를 찾는다.
+global:
+  scrape_interval: 15s        # 15초마다 메트릭 수집
+
+scrape_configs:
+  # Prometheus 자기 자신
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 호스트(EC2) 메트릭: CPU·메모리·디스크·네트워크
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # 컨테이너별 메트릭: 컨테이너 CPU·메모리·IO
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # (Layer 2, CI 복구 후) 앱 메트릭: micrometer /actuator/prometheus
+  # - job_name: 'routine-server'
+  #   metrics_path: /actuator/prometheus
+  #   static_configs:
+  #     - targets: ['routine-server:8080']

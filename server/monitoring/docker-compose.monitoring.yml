@@ -1,0 +1,73 @@
+# 관측성 스택 (Prometheus + Grafana + exporters).
+#   기동:  cd ~/routine-calendar/server/monitoring
+#          docker compose -f docker-compose.monitoring.yml up -d
+#
+# 모든 웹 포트는 127.0.0.1(루프백)에만 바인딩 → 외부 직접 접근 불가.
+# Grafana만 앞단 Nginx(grafana.gatihae.com, HTTPS)로 프록시해 노출한다.
+
+services:
+  # 메트릭 수집·저장 (시계열 DB)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  # 호스트(EC2) 메트릭 노출: CPU·메모리·디스크·네트워크
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "127.0.0.1:9100:9100"
+
+  # 컨테이너별 메트릭 노출
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "127.0.0.1:8081:8080"   # 호스트 8081 → cAdvisor 8080 (8080은 앱이 씀)
+
+  # 대시보드
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      # 관리자 비밀번호는 .env 에서 주입 (커밋 금지)
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD 를 .env 에 설정하세요}
+      # Nginx 뒤에서 서브도메인으로 서빙
+      GF_SERVER_ROOT_URL: https://grafana.gatihae.com
+    volumes:
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  prom-data:
+  grafana-data:
