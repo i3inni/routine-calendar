@@ -66,3 +66,7 @@ management:
       exposure:
         # prometheus = 앱 메트릭 스크레이프용(/actuator/prometheus). 내부 네트워크에서만 긁는다.
         include: health,info,prometheus
+  metrics:
+    tags:
+      # 모든 메트릭에 application 라벨 부착 → Grafana 대시보드(4701 등)가 이 라벨로 필터한다.
+      application: ${spring.application.name}
