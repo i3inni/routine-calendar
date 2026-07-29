@@ -35,7 +35,8 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/api/ping", "/actuator/health").permitAll()
+                        // /actuator/prometheus 는 내부망(Prometheus)이 스크레이프. 외부 노출은 Nginx에서 차단.
+                        .requestMatchers("/auth/**", "/api/ping", "/actuator/health", "/actuator/prometheus").permitAll()
                         // Universal Links: AASA 파일 + 친구추가 폴백 페이지 + 개인정보/지원 페이지는 공개
                         .requestMatchers("/.well-known/**", "/add-friend", "/privacy", "/support").permitAll()
                         // 관리자 페이지는 ?key= 로 자체 보호(스프링 인증 대신)
