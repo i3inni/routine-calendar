@@ -16,6 +16,9 @@ services:
       - prom-data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
+    networks:
+      - default      # node-exporter·cadvisor·grafana 와 통신
+      - obsnet       # 앱(prod compose)을 스크레이프하도록 공유망
 
   # 호스트(EC2) 메트릭 노출: CPU·메모리·디스크·네트워크
   node-exporter:
@@ -71,3 +74,8 @@ services:
 volumes:
   prom-data:
   grafana-data:
+
+networks:
+  # 앱(prod compose)과 공유하는 외부 네트워크. EC2에서 미리 생성: docker network create obsnet
+  obsnet:
+    external: true

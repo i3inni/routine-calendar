@@ -19,8 +19,8 @@ scrape_configs:
     static_configs:
       - targets: ['cadvisor:8080']
 
-  # (Layer 2, CI 복구 후) 앱 메트릭: micrometer /actuator/prometheus
-  # - job_name: 'routine-server'
-  #   metrics_path: /actuator/prometheus
-  #   static_configs:
-  #     - targets: ['routine-server:8080']
+  # 앱 메트릭: micrometer /actuator/prometheus (공유 네트워크 obsnet 으로 앱 컨테이너에 닿음)
+  - job_name: 'routine-server'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['routine-server:8080']

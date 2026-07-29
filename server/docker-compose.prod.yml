@@ -46,6 +46,14 @@ services:
       # 호스트의 127.0.0.1(루프백)에만 바인딩 → 외부에서 8080 직접 접근 불가.
       # 앞단 Nginx(호스트)만 127.0.0.1:8080 으로 프록시한다.
       - "127.0.0.1:8080:8080"
+    networks:
+      - default      # postgres 와 통신 (이 compose 내부망)
+      - obsnet       # Prometheus(모니터링 compose)가 앱을 스크레이프하도록 공유망
 
 volumes:
   routine-pgdata:
+
+networks:
+  # 모니터링 스택과 공유하는 외부 네트워크. EC2에서 미리 생성: docker network create obsnet
+  obsnet:
+    external: true
