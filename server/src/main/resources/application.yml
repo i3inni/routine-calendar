@@ -24,6 +24,14 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
+  data:
+    redis:
+      # 로컬은 localhost, 컨테이너/운영은 REDIS_HOST(=redis 서비스명)로 주입
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false   # 캐시 용도로만 씀. JPA 레포를 Redis 레포로 스캔하지 않도록.
+
 app:
   jwt:
     # HS256 → 최소 256bit(32바이트) 이상. 운영에선 반드시 환경변수로 주입.

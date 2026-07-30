@@ -31,6 +31,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	// 앱 메트릭을 Prometheus 형식(/actuator/prometheus)으로 노출
 	implementation 'io.micrometer:micrometer-registry-prometheus'
+	// 캐시(친구 오늘 요약) — Redis 백엔드 + 스프링 캐시 추상화
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 

@@ -27,12 +27,15 @@ import com.routinecalendar.server.user.repository.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,9 @@ public class FriendService {
 
     /** 친구 스트릭 계산 시 완료기록을 조회할 최대 과거 일수 (스트릭 상한과 일치) */
     private static final int MAX_STREAK_LOOKBACK = 366;
+
+    /** 친구 목록+오늘 요약 캐시. meId 별로 저장(사람마다 목록·자극횟수가 다름). TTL은 CacheConfig(60초). */
+    private static final String FRIENDS_CACHE = "friendsSummary";
 
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
@@ -76,6 +82,9 @@ public class FriendService {
 
     // MARK: - 친구 목록 (+ 오늘 요약)
 
+    // 캐시 히트면 DB 조회·오늘요약 계산을 통째로 건너뛴다(cache-aside).
+    // 신선도: 60초 TTL(친구의 루틴 완료 등 남의 변경) + 내 변경 시 아래 @CacheEvict.
+    @Cacheable(cacheNames = FRIENDS_CACHE, key = "#meId")
     @Transactional(readOnly = true)
     public List<FriendResponse> listFriends(Long meId) {
         User me = getUser(meId);
@@ -83,7 +92,8 @@ public class FriendService {
                 .map(f -> other(f, me))
                 .toList();
         if (friends.isEmpty()) {
-            return List.of();
+            // Redis JSON 역직렬화 호환을 위해 불변리스트(List.of) 대신 ArrayList 반환
+            return new ArrayList<>();
         }
 
         // '오늘 요약'을 친구의 루틴+완료기록으로 서버에서 즉석 계산한다.
@@ -110,7 +120,8 @@ public class FriendService {
                             friendToday);
                     return toFriendResponse(u, stat, nudgeStats.get(u.getId()));
                 })
-                .toList();
+                // Redis JSON 역직렬화 호환을 위해 Stream.toList(불변) 대신 ArrayList 수집
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /** 친구들의 since 이후 완료기록을 userId → routineId → (날짜 → 카운트)로 묶는다. */
@@ -126,6 +137,7 @@ public class FriendService {
 
     // MARK: - 친구 요청 보내기
 
+    @CacheEvict(cacheNames = FRIENDS_CACHE, key = "#meId")   // 역방향 요청이면 즉시 친구 성사 → 내 목록 변함
     @Transactional
     public void sendRequest(Long meId, String handle) {
         User me = getUser(meId);
@@ -178,6 +190,7 @@ public class FriendService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = FRIENDS_CACHE, key = "#meId")   // 친구 성사 → 내 목록 변함(상대 캐시는 TTL로 갱신)
     @Transactional
     public void acceptRequest(Long meId, Long requestId) {
         FriendRequest request = loadPendingRequestForMe(meId, requestId);
@@ -196,6 +209,7 @@ public class FriendService {
 
     // MARK: - 친구 끊기 (멱등)
 
+    @CacheEvict(cacheNames = FRIENDS_CACHE, key = "#meId")   // 친구 삭제 → 내 목록 변함
     @Transactional
     public void removeFriend(Long meId, Long friendUserId) {
         User me = getUser(meId);
@@ -205,6 +219,7 @@ public class FriendService {
     }
 
     // MARK: - 자극하기 (콕)
+    @CacheEvict(cacheNames = FRIENDS_CACHE, key = "#meId")   // 자극 → 내가 본 그 친구의 남은횟수 변함
     @Transactional
     public void nudge(Long meId, Long friendUserId, String message) {
         User me = getUser(meId);
