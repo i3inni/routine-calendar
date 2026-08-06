@@ -11,6 +11,7 @@ import com.routinecalendar.server.friend.repository.PokeRepository;
 import com.routinecalendar.server.friend.repository.PokeRepository.NudgeStat;
 
 import com.routinecalendar.server.common.AppTime;
+import com.routinecalendar.server.common.RateLimiter;
 import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
 import com.routinecalendar.server.friend.dto.FriendDtos.FriendRequestResponse;
@@ -61,6 +62,7 @@ public class FriendService {
     private final FriendTodayCalculator todayCalculator;
     private final PokeRepository pokeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final RateLimiter rateLimiter;
 
     public FriendService(UserRepository userRepository,
                          FriendshipRepository friendshipRepository,
@@ -69,7 +71,8 @@ public class FriendService {
                          RoutineCompletionRepository completionRepository,
                          FriendTodayCalculator todayCalculator,
                          PokeRepository pokeRepository,
-                         ApplicationEventPublisher eventPublisher) {
+                         ApplicationEventPublisher eventPublisher,
+                         RateLimiter rateLimiter) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.friendRequestRepository = friendRequestRepository;
@@ -78,6 +81,7 @@ public class FriendService {
         this.todayCalculator = todayCalculator;
         this.pokeRepository = pokeRepository;
         this.eventPublisher = eventPublisher;
+        this.rateLimiter = rateLimiter;
     }
 
     // MARK: - 친구 목록 (+ 오늘 요약)
@@ -140,6 +144,9 @@ public class FriendService {
     @CacheEvict(cacheNames = FRIENDS_CACHE, key = "#meId")   // 역방향 요청이면 즉시 친구 성사 → 내 목록 변함
     @Transactional
     public void sendRequest(Long meId, String handle) {
+        if (!rateLimiter.tryAcquire("rl:friendreq:" + meId, 10, Duration.ofMinutes(1))) {
+            throw new BusinessException(ErrorCode.FRIEND_REQUEST_RATE_LIMITED);
+        }
         User me = getUser(meId);
         User target = userRepository.findByHandle(handle)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));

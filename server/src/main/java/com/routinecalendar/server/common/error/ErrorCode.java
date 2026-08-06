@@ -29,8 +29,10 @@ public enum ErrorCode {
     FRIEND_REQUEST_ALREADY_SENT(HttpStatus.CONFLICT, "FRIEND_409_2", "이미 친구 요청을 보냈습니다."),
     FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND_404_1", "친구 요청을 찾을 수 없습니다."),
     FRIEND_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "FRIEND_403_1", "처리할 수 없는 친구 요청입니다."),
+    FRIEND_REQUEST_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "FRIEND_429_2", "친구요청을 너무 자주 보냈어요. 잠시 후 다시 시도해 주세요."),
     NOT_FRIEND(HttpStatus.FORBIDDEN, "FRIEND_403_2", "친구가 아닌 사용자입니다."),
     NUDGE_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "FRIEND_429", "잠시 후에 다시 자극할 수 있어요."),
+    
 
     // 카카오 연동
     KAKAO_ALREADY_LINKED(HttpStatus.CONFLICT, "KAKAO_409", "이미 다른 계정에 연동된 카카오입니다."),
