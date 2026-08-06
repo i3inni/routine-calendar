@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.routinecalendar.server.common.RateLimiter;
 import com.routinecalendar.server.common.error.BusinessException;
 import com.routinecalendar.server.common.error.ErrorCode;
 import com.routinecalendar.server.friend.domain.FriendNudgedEvent;
@@ -40,6 +41,7 @@ class FriendServiceTest {
     @Mock FriendTodayCalculator todayCalculator;
     @Mock PokeRepository pokeRepository;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock RateLimiter rateLimiter;
 
     FriendService friendService;
 
@@ -50,7 +52,7 @@ class FriendServiceTest {
     void setUp() {
         friendService = new FriendService(userRepository, friendshipRepository,
                 friendRequestRepository, routineRepository, completionRepository,
-                todayCalculator, pokeRepository, eventPublisher);
+                todayCalculator, pokeRepository, eventPublisher, rateLimiter);
     }
 
     @Test
