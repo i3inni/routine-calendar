@@ -43,6 +43,7 @@ public class JwtTokenProvider {
     private String create(Long userId, String type, long validitySeconds) {
         Instant now = Instant.now();
         return Jwts.builder()
+                .id(java.util.UUID.randomUUID().toString()) // jti(고유 토큰 ID)
                 .subject(String.valueOf(userId))
                 .claim(CLAIM_TYPE, type)
                 .issuedAt(Date.from(now))

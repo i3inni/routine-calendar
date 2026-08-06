@@ -27,19 +27,22 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtTokenProvider tokenProvider;
     private final AuthProperties authProperties;
+    private final RefreshTokenStore refreshTokenStore;
 
     public AuthService(KakaoApiClient kakaoApiClient,
                        AppleTokenVerifier appleTokenVerifier,
                        UserService userService,
                        UserRepository userRepository,
                        JwtTokenProvider tokenProvider,
-                       AuthProperties authProperties) {
+                       AuthProperties authProperties,
+                       RefreshTokenStore refreshTokenStore) {
         this.kakaoApiClient = kakaoApiClient;
         this.appleTokenVerifier = appleTokenVerifier;
         this.userService = userService;
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
         this.authProperties = authProperties;
+        this.refreshTokenStore = refreshTokenStore;
     }
 
     /** 카카오 토큰 → 회원 조회/생성 → 우리 JWT 발급 */
@@ -68,9 +71,16 @@ public class AuthService {
         } catch (JwtException e) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
+        if(!refreshTokenStore.matches(userId, request.refreshToken())){
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
         return issueTokens(user);
+    }
+
+    public void logout(Long userId) {
+        refreshTokenStore.delete(userId);
     }
 
     /** 개발용: 카카오 없이 로그인. dev-login-enabled=true 일 때만. */
@@ -89,6 +99,7 @@ public class AuthService {
     private AuthResponse issueTokens(User user) {
         String access = tokenProvider.createAccessToken(user.getId());
         String refresh = tokenProvider.createRefreshToken(user.getId());
+        refreshTokenStore.save(user.getId(), refresh);
         return new AuthResponse(access, refresh, UserResponse.from(user));
     }
 }

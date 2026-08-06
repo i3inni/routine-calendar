@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/auth")
@@ -38,6 +41,12 @@ public class AuthController {
     @PostMapping("/refresh")
     public AuthResponse refresh(@Valid @RequestBody RefreshRequest request) {
         return authService.refresh(request);
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@AuthenticationPrincipal Long meId) {
+        authService.logout(meId);
     }
 
     /** 개발용 로그인 (카카오 없이) */
