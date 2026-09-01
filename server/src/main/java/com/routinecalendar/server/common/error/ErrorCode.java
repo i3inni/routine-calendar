@@ -41,7 +41,10 @@ public enum ErrorCode {
 
     // 루틴
     ROUTINE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUTINE_404", "루틴을 찾을 수 없습니다."),
-    ROUTINE_FORBIDDEN(HttpStatus.FORBIDDEN, "ROUTINE_403", "접근할 수 없는 루틴입니다.");
+    ROUTINE_FORBIDDEN(HttpStatus.FORBIDDEN, "ROUTINE_403", "접근할 수 없는 루틴입니다."),
+
+    // AI
+    AI_PROVIDER_ERROR(HttpStatus.BAD_GATEWAY, "AI_502", "AI 처리 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.");
 
     private final HttpStatus status;
     private final String code;
