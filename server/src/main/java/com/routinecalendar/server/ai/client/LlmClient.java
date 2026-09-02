@@ -15,4 +15,16 @@ public interface LlmClient {
      * @return choices[0].message.content — 스키마를 따르는 JSON '문자열'
      */
     String completeJson(String systemPrompt, String userMessage, String jsonSchema);
+
+    /**
+     * Tool(Function) Calling 루프. LLM이 도구 호출을 요청하면 executor로 실행하고
+     * 결과를 되먹여 재요청한다. LLM이 더 이상 도구를 안 부르고 낸 최종 텍스트를 반환.
+     *
+     * @param systemPrompt 규칙
+     * @param userMessage  사용자 요청
+     * @param toolsJson    도구 정의(JSON 배열 문자열)
+     * @param executor     도구 실제 실행 콜백
+     * @return LLM의 최종 텍스트 응답
+     */
+    String runToolLoop(String systemPrompt, String userMessage, String toolsJson, ToolExecutor executor);
 }

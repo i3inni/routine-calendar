@@ -9,12 +9,16 @@ import com.routinecalendar.server.config.AiProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** OpenAI Chat Completions로 Structured Output(JSON)을 받아온다. */
+/** OpenAI Chat Completions로 Structured Output(JSON)·Tool Calling을 처리한다. */
 @Component
 public class OpenAiClient implements LlmClient {
+
+    // 도구 루프가 무한히 돌지 않도록 하는 상한(안전장치).
+    private static final int MAX_TOOL_ITERATIONS = 5;
 
     private final RestClient restClient;
     private final String apiKey;
@@ -69,6 +73,68 @@ public class OpenAiClient implements LlmClient {
     private JsonNode parseSchema(String jsonSchema) {
         try {
             return objectMapper.readTree(jsonSchema);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR);
+        }
+    }
+
+    @Override
+    public String runToolLoop(String systemPrompt, String userMessage, String toolsJson, ToolExecutor executor) {
+        JsonNode toolsNode = parseSchema(toolsJson);   // 도구 정의도 결국 JSON → readTree 재사용
+
+        // 대화 메시지 배열. 도구 호출/결과가 여기 계속 쌓인다.
+        List<Object> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", systemPrompt));
+        messages.add(Map.of("role", "user", "content", userMessage));
+
+        for (int iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+            Map<String, Object> body = Map.of(
+                    "model", model,
+                    "messages", messages,
+                    "tools", toolsNode,
+                    "tool_choice", "auto"
+            );
+
+            String raw = restClient.post()
+                    .uri("/chat/completions")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                    .body(body)
+                    .retrieve()
+                    .onStatus(status -> status.isError(), (req, r) -> {
+                        throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR);
+                    })
+                    .body(String.class);
+
+            JsonNode message = readMessage(raw);
+            JsonNode toolCalls = message.path("tool_calls");
+
+            // 도구를 더 안 부르면 → 최종 텍스트 답변 → 루프 종료
+            if (!toolCalls.isArray() || toolCalls.isEmpty()) {
+                return message.path("content").asText();
+            }
+
+            // 도구 호출 요청됨: assistant 메시지(그대로)를 넣고, 각 도구를 실행해 결과를 tool 메시지로 추가
+            messages.add(message);
+            for (JsonNode call : toolCalls) {
+                String id = call.path("id").asText();
+                String name = call.path("function").path("name").asText();
+                String args = call.path("function").path("arguments").asText();
+                String result = executor.execute(name, args);
+                messages.add(Map.of("role", "tool", "tool_call_id", id, "content", result));
+            }
+        }
+        // 상한까지 돌았는데 결론이 안 남 → 실패 처리
+        throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR);
+    }
+
+    /** 응답 raw JSON에서 choices[0].message 노드를 꺼낸다. */
+    private JsonNode readMessage(String rawResponse) {
+        try {
+            JsonNode choices = objectMapper.readTree(rawResponse).path("choices");
+            if (!choices.isArray() || choices.isEmpty()) {
+                throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR);
+            }
+            return choices.get(0).path("message");
         } catch (JsonProcessingException e) {
             throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR);
         }
