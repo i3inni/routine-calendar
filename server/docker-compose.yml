@@ -46,6 +46,8 @@ services:
       REDIS_HOST: redis
       # 로컬에서 소셜 로그인 없이 들어오기 위한 개발용 로그인 허용.
       DEV_LOGIN_ENABLED: "true"
+      # OpenAI 키는 호스트 환경변수에서 그대로 주입(코드/이미지에 안 박음).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "8080:8080"
 
