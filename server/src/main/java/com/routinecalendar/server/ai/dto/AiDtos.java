@@ -21,4 +21,16 @@ public final class AiDtos {
             String assistantMessage,
             List<String> warnings
     ) {}
+
+    /** 자연어 루틴 수정 요청 */
+    public record RoutineEditRequest(
+            @NotBlank @Size(max = 200) String text
+    ) {}
+
+    /** 수정 제안 응답. draft가 있으면 사용자 확인 후 기존 PUT /me/routines/{id}로 저장.
+     *  draft가 null이면 LLM이 되물은 것(assistantMessage 참고). */
+    public record RoutineEditResponse(
+            RoutineRequest draft,
+            String assistantMessage
+    ) {}
 }
