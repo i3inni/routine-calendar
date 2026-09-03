@@ -32,6 +32,6 @@ public class AiCoachController {
     /** 저장된 대화 전체(표시용). 새 기기가 과거 대화를 렌더링할 때. */
     @GetMapping("/me/ai/coach/messages")
     public List<CoachMessageResponse> messages(@AuthenticationPrincipal Long meId) {
-        return coachService.history(meId);
+        return coachService.history(meId).stream().map(CoachMessageResponse::from).toList();
     }
 }
