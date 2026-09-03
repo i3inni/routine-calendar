@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.routinecalendar.server.ai.client.LlmClient;
 import com.routinecalendar.server.ai.domain.AiCoachMessage;
+import com.routinecalendar.server.ai.dto.AiDtos.CoachMessageResponse;
 import com.routinecalendar.server.ai.dto.AiDtos.CoachResponse;
 import com.routinecalendar.server.ai.dto.AiDtos.PendingAction;
 import com.routinecalendar.server.ai.prompt.CoachPrompt;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +40,7 @@ public class AiCoachService {
     private static final Duration RATE_WINDOW = Duration.ofMinutes(1);
     private static final int HISTORY_LIMIT = 20;              // LLM 문맥으로 넣을 최근 턴 수
     private static final String METRIC = "ai.coach";
+    private static final String PROPOSAL_NOTE = "\n\n[코치메모]";  // 재제안 방지용 히스토리 마커(표시 시 제거)
 
     private final LlmClient llmClient;
     private final RoutineService routineService;
@@ -81,9 +84,17 @@ public class AiCoachService {
             String reply = llmClient.runToolLoop(seed, CoachPrompt.TOOLS,
                     (toolName, argsJson) -> executeTool(meId, toolName, argsJson, pending));
 
-            // 3) 대화 저장(user + assistant). 도구 호출/결과는 저장하지 않는다.
+            // 한 턴에 제안은 '딱 하나'(가장 최근 동작)만. 이전 요청 재소환 등 중복을 잘라낸다.
+            if (pending.size() > 1) {
+                PendingAction latest = pending.get(pending.size() - 1);
+                pending.clear();
+                pending.add(latest);
+            }
+
+            // 3) 대화 저장. assistant엔 '이미 제안한 동작' 메모를 덧붙여 다음 턴 재제안을 막는다.
+            //    (표시할 땐 history()에서 메모를 제거한다. 사용자에게 반환하는 reply는 메모 없는 원문.)
             messageRepository.save(new AiCoachMessage(user, "user", message));
-            messageRepository.save(new AiCoachMessage(user, "assistant", reply));
+            messageRepository.save(new AiCoachMessage(user, "assistant", reply + proposalNote(pending)));
 
             count("success");
             return new CoachResponse(reply, pending);
@@ -93,11 +104,31 @@ public class AiCoachService {
         }
     }
 
-    /** 표시용 전체 히스토리(시간순). */
-    public List<AiCoachMessage> history(Long meId) {
+    /** 표시용 전체 히스토리(시간순). 저장된 '제안 메모'는 제거해 반환. */
+    public List<CoachMessageResponse> history(Long meId) {
         User user = userRepository.findById(meId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return messageRepository.findByUserOrderByCreatedAtAsc(user);
+        return messageRepository.findByUserOrderByCreatedAtAsc(user).stream()
+                .map(m -> new CoachMessageResponse(m.getRole(), stripNote(m.getContent()), m.getCreatedAt()))
+                .toList();
+    }
+
+    /** assistant 히스토리에 붙일 재제안 방지 메모(모델만 읽고, 표시 땐 제거). */
+    private String proposalNote(List<PendingAction> pending) {
+        if (pending.isEmpty()) return "";
+        String summary = pending.stream().map(this::actionLabel).collect(Collectors.joining(", "));
+        return PROPOSAL_NOTE + " 위 답변에서 이미 카드로 제안한 동작(다시 제안하지 말 것): " + summary;
+    }
+
+    private String actionLabel(PendingAction p) {
+        String what = p.draft() != null ? p.draft().name()
+                : (p.routineId() != null ? p.routineId() : "");
+        return p.kind() + " " + what;
+    }
+
+    private static String stripNote(String content) {
+        int i = content.indexOf(PROPOSAL_NOTE);
+        return i >= 0 ? content.substring(0, i).stripTrailing() : content;
     }
 
     private List<AiCoachMessage> recentHistory(User user) {
@@ -113,7 +144,7 @@ public class AiCoachService {
         try {
             return switch (toolName) {
                 case "list_routines"    -> writeJson(routineService.listMyRoutines(meId));
-                case "complete_routine" -> completeRoutine(meId, argsJson);
+                case "complete_routine" -> stageComplete(meId, argsJson, pending);
                 case "create_routine"   -> stageCreate(argsJson, pending);
                 case "update_routine"   -> stageUpdate(meId, argsJson, pending);
                 case "delete_routine"   -> stageDelete(meId, argsJson, pending);
@@ -124,16 +155,16 @@ public class AiCoachService {
         }
     }
 
-    /** 완료 처리 — 즉시 반영(사소·되돌리기 쉬움). */
-    private String completeRoutine(Long meId, String argsJson) throws JsonProcessingException {
+    /** 완료 — 제안만 캡처. 실제 체크는 사용자 확인 후 클라가 반영(로컬 즉시 표시). */
+    private String stageComplete(Long meId, String argsJson, List<PendingAction> pending) throws JsonProcessingException {
         CompleteArgs a = objectMapper.readValue(argsJson, CompleteArgs.class);
         UUID id = parseUuid(a.routineId());
         if (id == null) return "{\"error\":\"invalid routineId\"}";
         RoutineResponse r = findRoutine(meId, id);
         if (r == null) return "{\"error\":\"routine not found\"}";
         int count = a.count() != null ? a.count() : r.target();
-        routineService.setCompletion(meId, id, AppTime.today(), count);
-        return "{\"ok\":true,\"done\":\"" + r.name() + "\"}";
+        pending.add(new PendingAction("complete", null, id.toString(), count));
+        return "{\"ok\":true,\"staged\":\"complete\",\"name\":\"" + r.name() + "\"}";
     }
 
     /** 생성 — 제안만 캡처. */
@@ -141,7 +172,7 @@ public class AiCoachService {
         RoutineArgs a = objectMapper.readValue(argsJson, RoutineArgs.class);
         RoutineRequest draft = new RoutineRequest(null, a.name(), a.type(), a.target(), a.unit(),
                 a.reminder(), a.anytime(), a.repeatMode(), a.repeatDays(), null, null);
-        pending.add(new PendingAction("create", draft, null));
+        pending.add(new PendingAction("create", draft, null, null));
         return "{\"ok\":true,\"staged\":\"create\"}";
     }
 
@@ -155,7 +186,7 @@ public class AiCoachService {
         RoutineRequest draft = new RoutineRequest(id, a.name(), a.type(), a.target(), a.unit(),
                 a.reminder(), a.anytime(), a.repeatMode(), a.repeatDays(),
                 existing.createdAt(), existing.endDate());
-        pending.add(new PendingAction("update", draft, id.toString()));
+        pending.add(new PendingAction("update", draft, id.toString(), null));
         return "{\"ok\":true,\"staged\":\"update\"}";
     }
 
@@ -166,7 +197,7 @@ public class AiCoachService {
         if (id == null) return "{\"error\":\"invalid routineId\"}";
         RoutineResponse existing = findRoutine(meId, id);
         if (existing == null) return "{\"error\":\"routine not found\"}";
-        pending.add(new PendingAction("delete", null, id.toString()));
+        pending.add(new PendingAction("delete", null, id.toString(), null));
         return "{\"ok\":true,\"staged\":\"delete\",\"name\":\"" + existing.name() + "\"}";
     }
 
