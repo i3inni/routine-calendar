@@ -101,6 +101,24 @@ struct RoutineDTO: Decodable {
     let endDate: String?     // "yyyy-MM-dd" or nil (서버 미지원 시 nil)
 }
 
+// AI 자연어 루틴 초안 응답 (POST /me/ai/routine-draft)
+struct RoutineDraftDTO: Decodable {
+    let draft: DraftFields
+    let assistantMessage: String
+    let warnings: [String]
+
+    struct DraftFields: Decodable {
+        let name: String
+        let type: String        // "check" / "count"
+        let target: Int
+        let unit: String
+        let reminder: String?   // "HH:MM" or nil
+        let anytime: Bool
+        let repeatMode: String  // "daily" / "weekdays" / "custom"
+        let repeatDays: [Int]   // 0=일 … 6=토
+    }
+}
+
 struct CompletionDTO: Decodable {
     let routineId: UUID
     let date: String   // "yyyy-MM-dd"
@@ -267,6 +285,11 @@ final class APIClient: @unchecked Sendable {
 
     func createRoutine(_ r: Routine) async throws {
         try await sendNoContent("POST", "/me/routines", body: routineBody(r))
+    }
+
+    // 자연어 문장 → 루틴 초안(생성 X). 사용자가 확인 후 createRoutine으로 실제 생성.
+    func aiRoutineDraft(text: String) async throws -> RoutineDraftDTO {
+        try await send("POST", "/me/ai/routine-draft", body: ["text": text])
     }
 
     func updateRoutine(_ r: Routine) async throws {

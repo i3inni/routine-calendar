@@ -23,6 +23,11 @@ struct RoutineSheetView: View {
     @State private var customDays: Set<Int> = []
     @State private var showDeleteConfirm = false
 
+    // AI 자연어 루틴 초안
+    @State private var aiText: String = ""
+    @State private var aiLoading = false
+    @State private var aiError: String?
+
     private let dayLabels = ["일", "월", "화", "수", "목", "금", "토"]
 
     /// 삭제 확인 문구에 쓸 "m월 d일" (선택일)
@@ -39,6 +44,41 @@ struct RoutineSheetView: View {
 
                 ScrollView {
                     VStack(spacing: 0) {
+                        // AI 자연어 입력 (추가 모드에서만) — 성공 시 아래 폼을 채워준다.
+                        if mode == .add {
+                            VStack(spacing: 8) {
+                                HStack(spacing: 8) {
+                                    TextField("예: 매주 월수금 저녁 8시 운동", text: $aiText)
+                                        .font(.system(size: 15))
+                                        .disabled(aiLoading)
+                                        .submitLabel(.go)
+                                        .onSubmit { Task { await generateDraft() } }
+                                    Button {
+                                        Task { await generateDraft() }
+                                    } label: {
+                                        if aiLoading {
+                                            ProgressView()
+                                        } else {
+                                            Text("AI로 만들기")
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundStyle(aiText.isEmpty ? Color.rcText3(scheme) : Color.rcAccent(scheme))
+                                        }
+                                    }
+                                    .disabled(aiText.isEmpty || aiLoading)
+                                }
+                                if let aiError {
+                                    Text(aiError)
+                                        .font(.rcMeta)
+                                        .foregroundStyle(Color.rcDestructive)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .padding()
+                            .rcCard(scheme, radius: 16)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                        }
+
                         // Name field
                         TextField("루틴 이름 (예: 물 마시기)", text: $name)
                             .font(.system(size: 17))
@@ -311,6 +351,45 @@ struct RoutineSheetView: View {
                 var dc = DateComponents(); dc.hour = parts[0]; dc.minute = parts[1]
                 reminderTime = Calendar.current.date(from: dc) ?? reminderTime
             }
+        }
+    }
+
+    /// 자연어 문장을 서버로 보내 초안을 받아 폼을 채운다. 실제 생성은 사용자가 '저장'을 눌러야.
+    @MainActor
+    private func generateDraft() async {
+        let text = aiText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !aiLoading else { return }
+        aiLoading = true
+        aiError = nil
+        do {
+            let res = try await APIClient.shared.aiRoutineDraft(text: text)
+            applyDraft(res.draft)
+        } catch {
+            aiError = "루틴을 만들지 못했어요. 다시 시도해 주세요."
+        }
+        aiLoading = false
+    }
+
+    /// 서버 초안(draft)을 폼 @State에 반영. 사용자가 검토·수정 후 저장.
+    private func applyDraft(_ d: RoutineDraftDTO.DraftFields) {
+        name       = d.name
+        type       = RoutineType(rawValue: d.type) ?? .check
+        target     = d.target
+        unit       = d.unit
+        repeatMode = RepeatMode(rawValue: d.repeatMode) ?? .daily
+        customDays = Set(d.repeatDays)
+        anytime    = d.anytime
+        // 알림 시각이 있으면 알림 켜고 '아무때나' 끔
+        if let rem = d.reminder {
+            let parts = rem.split(separator: ":").compactMap { Int($0) }
+            if parts.count == 2 {
+                var dc = DateComponents(); dc.hour = parts[0]; dc.minute = parts[1]
+                reminderTime = Calendar.current.date(from: dc) ?? reminderTime
+                reminderOn = true
+                anytime = false
+            }
+        } else {
+            reminderOn = false
         }
     }
 
