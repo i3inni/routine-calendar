@@ -79,13 +79,11 @@ public class OpenAiClient implements LlmClient {
     }
 
     @Override
-    public String runToolLoop(String systemPrompt, String userMessage, String toolsJson, ToolExecutor executor) {
+    public String runToolLoop(List<Map<String, Object>> seedMessages, String toolsJson, ToolExecutor executor) {
         JsonNode toolsNode = parseSchema(toolsJson);   // 도구 정의도 결국 JSON → readTree 재사용
 
-        // 대화 메시지 배열. 도구 호출/결과가 여기 계속 쌓인다.
-        List<Object> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", systemPrompt));
-        messages.add(Map.of("role", "user", "content", userMessage));
+        // 시작 메시지(system+히스토리+새 입력)를 복사해 시작. 이후 도구 호출/결과(JsonNode)가 섞여 쌓인다.
+        List<Object> messages = new ArrayList<>(seedMessages);
 
         for (int iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
             Map<String, Object> body = Map.of(
