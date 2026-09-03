@@ -62,6 +62,7 @@ class AiCoachServiceTest {
 
     @Test
     void 생성_요청은_제안으로만_캡처되고_저장하지_않는다() {
+        when(routineService.listMyRoutines(1L)).thenReturn(List.of());   // chat이 번호목록 컨텍스트를 만든다
         when(llmClient.runToolLoop(anyList(), anyString(), any())).thenAnswer(inv -> {
             ToolExecutor exec = inv.getArgument(2);
             exec.execute("create_routine", """
@@ -90,7 +91,7 @@ class AiCoachServiceTest {
 
         when(llmClient.runToolLoop(anyList(), anyString(), any())).thenAnswer(inv -> {
             ToolExecutor exec = inv.getArgument(2);
-            exec.execute("complete_routine", "{\"routineId\":\"" + id + "\",\"count\":null}");
+            exec.execute("complete_routine", "{\"ref\":1,\"count\":null}");   // 목록의 1번 루틴
             return "운동을 오늘 완료로 체크할까요?";
         });
 

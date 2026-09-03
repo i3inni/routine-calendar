@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
@@ -71,18 +70,22 @@ public class AiCoachService {
             User user = userRepository.findById(meId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-            // 1) 시작 메시지: system + 최근 히스토리(시간순) + 새 사용자 메시지
+            // 현재 루틴을 번호 목록으로 컨텍스트에 넣는다(모델은 번호로 지칭 → 긴 id 복사 불필요, 중복이름 구분).
+            List<RoutineResponse> myRoutines = routineService.listMyRoutines(meId);
+
+            // 1) 시작 메시지: system + 루틴 번호목록 + 최근 히스토리(시간순) + 새 사용자 메시지
             List<Map<String, Object>> seed = new ArrayList<>();
             seed.add(Map.of("role", "system", "content", CoachPrompt.system(AppTime.today())));
+            seed.add(Map.of("role", "system", "content", routineListContext(myRoutines)));
             for (AiCoachMessage m : recentHistory(user)) {
                 seed.add(Map.of("role", m.getRole(), "content", m.getContent()));
             }
             seed.add(Map.of("role", "user", "content", message));
 
-            // 2) 에이전트 실행 (도구 콜백으로 실제 도메인 연결)
+            // 2) 에이전트 실행. 도구는 위 목록의 '번호(ref)'로 루틴을 지칭 → 서버가 실제 루틴으로 매핑.
             List<PendingAction> pending = new ArrayList<>();
             String reply = llmClient.runToolLoop(seed, CoachPrompt.TOOLS,
-                    (toolName, argsJson) -> executeTool(meId, toolName, argsJson, pending));
+                    (toolName, argsJson) -> executeTool(myRoutines, toolName, argsJson, pending));
 
             // 한 턴에 제안은 '딱 하나'(가장 최근 동작)만. 이전 요청 재소환 등 중복을 잘라낸다.
             if (pending.size() > 1) {
@@ -140,14 +143,14 @@ public class AiCoachService {
 
     // MARK: - 도구 실행
 
-    private String executeTool(Long meId, String toolName, String argsJson, List<PendingAction> pending) {
+    private String executeTool(List<RoutineResponse> routines, String toolName, String argsJson,
+                               List<PendingAction> pending) {
         try {
             return switch (toolName) {
-                case "list_routines"    -> writeJson(routineService.listMyRoutines(meId));
-                case "complete_routine" -> stageComplete(meId, argsJson, pending);
+                case "complete_routine" -> stageComplete(routines, argsJson, pending);
                 case "create_routine"   -> stageCreate(argsJson, pending);
-                case "update_routine"   -> stageUpdate(meId, argsJson, pending);
-                case "delete_routine"   -> stageDelete(meId, argsJson, pending);
+                case "update_routine"   -> stageUpdate(routines, argsJson, pending);
+                case "delete_routine"   -> stageDelete(routines, argsJson, pending);
                 default -> "{\"error\":\"unknown tool\"}";
             };
         } catch (JsonProcessingException e) {
@@ -156,84 +159,90 @@ public class AiCoachService {
     }
 
     /** 완료 — 제안만 캡처. 실제 체크는 사용자 확인 후 클라가 반영(로컬 즉시 표시). */
-    private String stageComplete(Long meId, String argsJson, List<PendingAction> pending) throws JsonProcessingException {
+    private String stageComplete(List<RoutineResponse> routines, String argsJson, List<PendingAction> pending)
+            throws JsonProcessingException {
         CompleteArgs a = objectMapper.readValue(argsJson, CompleteArgs.class);
-        UUID id = parseUuid(a.routineId());
-        if (id == null) return "{\"error\":\"invalid routineId\"}";
-        RoutineResponse r = findRoutine(meId, id);
+        RoutineResponse r = byRef(routines, a.ref());
         if (r == null) return "{\"error\":\"routine not found\"}";
         int count = a.count() != null ? a.count() : r.target();
-        pending.add(new PendingAction("complete", null, id.toString(), count));
+        pending.add(new PendingAction("complete", null, r.id().toString(), count));
         return "{\"ok\":true,\"staged\":\"complete\",\"name\":\"" + r.name() + "\"}";
     }
 
     /** 생성 — 제안만 캡처. */
     private String stageCreate(String argsJson, List<PendingAction> pending) throws JsonProcessingException {
-        RoutineArgs a = objectMapper.readValue(argsJson, RoutineArgs.class);
+        CreateArgs a = objectMapper.readValue(argsJson, CreateArgs.class);
         RoutineRequest draft = new RoutineRequest(null, a.name(), a.type(), a.target(), a.unit(),
                 a.reminder(), a.anytime(), a.repeatMode(), a.repeatDays(), null, null);
         pending.add(new PendingAction("create", draft, null, null));
         return "{\"ok\":true,\"staged\":\"create\"}";
     }
 
-    /** 수정 — 제안만 캡처. 기존 createdAt/endDate 보존. */
-    private String stageUpdate(Long meId, String argsJson, List<PendingAction> pending) throws JsonProcessingException {
-        RoutineArgs a = objectMapper.readValue(argsJson, RoutineArgs.class);
-        UUID id = parseUuid(a.routineId());
-        if (id == null) return "{\"error\":\"invalid routineId\"}";
-        RoutineResponse existing = findRoutine(meId, id);
+    /** 수정 — 제안만 캡처. 기존 id/createdAt/endDate 보존. */
+    private String stageUpdate(List<RoutineResponse> routines, String argsJson, List<PendingAction> pending)
+            throws JsonProcessingException {
+        UpdateArgs a = objectMapper.readValue(argsJson, UpdateArgs.class);
+        RoutineResponse existing = byRef(routines, a.ref());
         if (existing == null) return "{\"error\":\"routine not found\"}";
-        RoutineRequest draft = new RoutineRequest(id, a.name(), a.type(), a.target(), a.unit(),
+        RoutineRequest draft = new RoutineRequest(existing.id(), a.name(), a.type(), a.target(), a.unit(),
                 a.reminder(), a.anytime(), a.repeatMode(), a.repeatDays(),
                 existing.createdAt(), existing.endDate());
-        pending.add(new PendingAction("update", draft, id.toString(), null));
+        pending.add(new PendingAction("update", draft, existing.id().toString(), null));
         return "{\"ok\":true,\"staged\":\"update\"}";
     }
 
     /** 삭제 — 제안만 캡처(파괴적). */
-    private String stageDelete(Long meId, String argsJson, List<PendingAction> pending) throws JsonProcessingException {
+    private String stageDelete(List<RoutineResponse> routines, String argsJson, List<PendingAction> pending)
+            throws JsonProcessingException {
         DeleteArgs a = objectMapper.readValue(argsJson, DeleteArgs.class);
-        UUID id = parseUuid(a.routineId());
-        if (id == null) return "{\"error\":\"invalid routineId\"}";
-        RoutineResponse existing = findRoutine(meId, id);
+        RoutineResponse existing = byRef(routines, a.ref());
         if (existing == null) return "{\"error\":\"routine not found\"}";
-        pending.add(new PendingAction("delete", null, id.toString(), null));
+        pending.add(new PendingAction("delete", null, existing.id().toString(), null));
         return "{\"ok\":true,\"staged\":\"delete\",\"name\":\"" + existing.name() + "\"}";
     }
 
     // MARK: - 헬퍼
 
-    private RoutineResponse findRoutine(Long meId, UUID id) {
-        return routineService.listMyRoutines(meId).stream()
-                .filter(r -> r.id().equals(id))
-                .findFirst().orElse(null);
+    /** 모델에 보여줄 번호 목록. 순서는 byRef 해석과 반드시 동일(같은 리스트를 쓴다). */
+    private String routineListContext(List<RoutineResponse> routines) {
+        if (routines.isEmpty()) return "현재 사용자의 루틴이 없습니다.";
+        StringBuilder sb = new StringBuilder("현재 사용자 루틴 (번호로 지칭):\n");
+        for (int i = 0; i < routines.size(); i++) {
+            RoutineResponse r = routines.get(i);
+            sb.append(i + 1).append(". ").append(r.name()).append(" (").append(brief(r)).append(")\n");
+        }
+        return sb.toString();
     }
 
-    private UUID parseUuid(String s) {
-        try {
-            return UUID.fromString(s);
-        } catch (IllegalArgumentException | NullPointerException e) {
-            return null;
-        }
+    private String brief(RoutineResponse r) {
+        String repeat = switch (r.repeatMode()) {
+            case "weekdays" -> "평일";
+            case "custom" -> "요일" + r.repeatDays();
+            default -> "매일";
+        };
+        String type = "count".equals(r.type()) ? "횟수" + r.target() + r.unit() : "체크";
+        String time = r.reminder() != null ? " " + r.reminder() : "";
+        return type + ", " + repeat + time;
     }
 
-    private String writeJson(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR);
-        }
+    /** 1-based 번호로 루틴 찾기(범위 밖이면 null). 컨텍스트와 같은 리스트를 쓴다. */
+    private RoutineResponse byRef(List<RoutineResponse> routines, Integer ref) {
+        if (ref == null || ref < 1 || ref > routines.size()) return null;
+        return routines.get(ref - 1);
     }
 
     private void count(String result) {
         meterRegistry.counter(METRIC, "result", result).increment();
     }
 
-    // 도구 인자 파싱용 record
-    private record CompleteArgs(String routineId, Integer count) {}
+    // 도구 인자 파싱용 record (기존 루틴은 ref=번호로 지칭)
+    private record CompleteArgs(Integer ref, Integer count) {}
 
-    private record RoutineArgs(String routineId, String name, String type, int target, String unit,
-                               String repeatMode, List<Integer> repeatDays, String reminder, boolean anytime) {}
+    private record CreateArgs(String name, String type, int target, String unit,
+                              String repeatMode, List<Integer> repeatDays, String reminder, boolean anytime) {}
 
-    private record DeleteArgs(String routineId) {}
+    private record UpdateArgs(Integer ref, String name, String type, int target, String unit,
+                              String repeatMode, List<Integer> repeatDays, String reminder, boolean anytime) {}
+
+    private record DeleteArgs(Integer ref) {}
 }
