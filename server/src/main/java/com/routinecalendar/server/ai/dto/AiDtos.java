@@ -47,11 +47,12 @@ public final class AiDtos {
             List<PendingAction> pendingActions
     ) {}
 
-    /** 코치가 제안한 실행 대기 액션. 사용자 확인 후 기존 루틴 API로 실행. */
+    /** 코치가 제안한 실행 대기 액션. 사용자 확인 후 클라가 기존 루틴 API로 실행. */
     public record PendingAction(
-            String kind,            // "create" | "update" | "delete"
-            RoutineRequest draft,   // create/update용 (delete면 null)
-            String routineId        // update/delete용 (create면 null)
+            String kind,            // "create" | "update" | "delete" | "complete"
+            RoutineRequest draft,   // create/update용 (그 외 null)
+            String routineId,       // update/delete/complete용 (create면 null)
+            Integer count           // complete용 오늘 완료 카운트 (그 외 null)
     ) {}
 
     /** 저장된 대화 한 줄(표시용). */
