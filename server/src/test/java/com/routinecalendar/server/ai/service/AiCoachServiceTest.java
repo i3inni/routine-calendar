@@ -16,7 +16,6 @@ import com.routinecalendar.server.ai.client.LlmClient;
 import com.routinecalendar.server.ai.client.ToolExecutor;
 import com.routinecalendar.server.ai.domain.AiCoachMessage;
 import com.routinecalendar.server.ai.dto.AiDtos.CoachResponse;
-import com.routinecalendar.server.ai.dto.AiDtos.PendingAction;
 import com.routinecalendar.server.ai.repository.AiCoachMessageRepository;
 import com.routinecalendar.server.common.RateLimiter;
 import com.routinecalendar.server.routine.dto.RoutineDtos.RoutineResponse;
@@ -62,7 +61,6 @@ class AiCoachServiceTest {
 
     @Test
     void 생성_요청은_제안으로만_캡처되고_저장하지_않는다() {
-        when(routineService.listMyRoutines(1L)).thenReturn(List.of());   // chat이 번호목록 컨텍스트를 만든다
         when(llmClient.runToolLoop(anyList(), anyString(), any())).thenAnswer(inv -> {
             ToolExecutor exec = inv.getArgument(2);
             exec.execute("create_routine", """
@@ -83,7 +81,7 @@ class AiCoachServiceTest {
     }
 
     @Test
-    void 완료_요청도_제안으로_캡처되고_바로_반영하지_않는다() {
+    void 완료_요청은_즉시_반영되고_제안은_없다() {
         UUID id = UUID.fromString("a6757aba-118d-4618-82d2-98269eff9d58");
         RoutineResponse existing = new RoutineResponse(id, "운동", "check", 1, "", null, false,
                 "daily", List.of(), Instant.parse("2026-08-01T00:00:00Z"), null);
@@ -91,18 +89,14 @@ class AiCoachServiceTest {
 
         when(llmClient.runToolLoop(anyList(), anyString(), any())).thenAnswer(inv -> {
             ToolExecutor exec = inv.getArgument(2);
-            exec.execute("complete_routine", "{\"ref\":1,\"count\":null}");   // 목록의 1번 루틴
-            return "운동을 오늘 완료로 체크할까요?";
+            exec.execute("complete_routine", "{\"routineId\":\"" + id + "\",\"count\":null}");
+            return "운동했어요!";
         });
 
         CoachResponse res = service.chat(1L, "운동 오늘 했어");
 
-        assertThat(res.pendingActions()).hasSize(1);
-        PendingAction pa = res.pendingActions().get(0);
-        assertThat(pa.kind()).isEqualTo("complete");
-        assertThat(pa.routineId()).isEqualTo(id.toString());
-        assertThat(pa.count()).isEqualTo(1);   // count 생략 → 목표(target=1)
-        // 서버가 직접 완료 처리하지 않는다(클라가 확인 후 반영)
-        verify(routineService, never()).setCompletion(any(), any(), any(), anyInt());
+        assertThat(res.pendingActions()).isEmpty();
+        // count 생략 → 목표(target=1)만큼 오늘 완료 처리
+        verify(routineService).setCompletion(eq(1L), eq(id), any(LocalDate.class), eq(1));
     }
 }
