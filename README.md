@@ -1,11 +1,27 @@
 # 같이해 (RoutineCalendar)
 
-> 친구와 함께 매일의 루틴을 만들어가는 iOS 앱 — **SwiftUI 클라이언트 + Spring Boot 백엔드**를 직접 설계·구현한 풀스택 사이드 프로젝트.
+> 친구와 함께 매일의 루틴을 만들어가는 iOS 앱입니다. Spring Boot 백엔드를 개발·운영하고, iOS 앱은 AI 코딩 도구의 도움으로 구현했습니다.
 
 혼자 하면 작심삼일이 되기 쉬운 루틴을, **친구의 진행 상황을 공유하고 ‘콕 찌르기’로 서로 응원**하며 이어가도록 만든 앱입니다.
 이 저장소는 iOS 앱과 백엔드 서버를 모두 포함하며, **백엔드(Spring Boot)** 설계·구현에 중점을 두었습니다.
 
 ---
+
+## 바로 체험하기
+
+**[App Store에서 같이해 설치하기](https://apps.apple.com/kr/app/id6776957483)**
+
+채용 검토를 위해 앱을 살펴보시는 경우, 저장소를 내려받거나 서버를 실행할 필요가 없습니다. iPhone에 앱을 설치하면 운영 중인 서비스에 연결됩니다. 지원 iOS 버전은 App Store의 호환성 항목에서 확인할 수 있습니다.
+
+| 순서 | 해볼 일 | 확인할 기능 |
+| --- | --- | --- |
+| 1 | 앱을 열고 카카오 또는 Apple 계정으로 로그인 | 소셜 로그인 |
+| 2 | 오늘 할 루틴을 추가 | 루틴 등록과 캘린더 표시 |
+| 3 | 루틴을 완료 처리한 뒤 캘린더 확인 | 완료 상태와 진행 상황 |
+| 4 · 선택 | 다른 계정과 친구 요청·수락 후 친구 화면 확인 | 친구의 오늘 루틴과 진행률 |
+| 5 · 선택 | 친구에게 ‘콕 찌르기’ 보내기 | 푸시 알림을 통한 응원 |
+
+혼자서는 루틴 등록·완료·캘린더를 확인할 수 있습니다. 친구 기능은 **서로 친구가 된 두 계정**이 필요하며, 푸시 수신은 알림 권한과 기기 설정의 영향을 받습니다. 공개 공용 계정 대신 본인의 소셜 계정으로 체험합니다.
 
 ## 핵심 요약
 
@@ -14,8 +30,8 @@
 | **클라이언트** | iOS / SwiftUI / `@Observable` / WidgetKit / Kakao·Apple 로그인 / APNs |
 | **백엔드** | Java 17 / Spring Boot 3.5 / Spring Security / Spring Data JPA(Hibernate) / PostgreSQL 16 / Flyway |
 | **인증** | 카카오·애플 소셜 로그인 → 자체 JWT(access+refresh, 회전) / Stateless |
-| **인프라** | Docker 멀티스테이지 빌드 / PaaS 배포 / Universal Links(AASA) |
-| **배포 상태** | iOS App Store 심사 제출 · 백엔드 PaaS 운영 |
+| **인프라** | Docker / AWS EC2 / Nginx / Universal Links(AASA) |
+| **배포 상태** | iOS App Store 출시 · 백엔드 운영 |
 
 ---
 
@@ -66,7 +82,7 @@ com.routinecalendar.server
 
 ## 설계에서 신경 쓴 점
 
-엔지니어링 의사결정과 그 근거를 정리했습니다. 자세한 구현·개념·동시성 처리는 **[server/docs/](server/docs/README.md)** 정독 가이드 참고.
+엔지니어링 의사결정과 그 근거를 정리했습니다. 구현 코드는 [server/](server/)에서 확인할 수 있습니다.
 
 - **Stateless JWT 인증** — 서버에 세션을 두지 않아 수평 확장에 유리. access(짧게)/refresh(길게) 분리 + `type` 클레임으로 혼용 차단, refresh 회전.
 - **애플 신원토큰 검증** — 애플 JWKS(공개키)를 받아 서명·`iss`·`aud`·만료를 직접 검증. 공개키는 캐시(`volatile`)로 재사용.
@@ -87,24 +103,11 @@ com.routinecalendar.server
 
 ---
 
-## 실행 방법 (백엔드)
+## 코드 살펴보기
 
-```bash
-cd server
-docker compose up -d          # PostgreSQL
-./gradlew bootRun             # 서버 (http://localhost:8080)
-curl localhost:8080/api/ping
-```
-상세 실행·배포·환경변수는 **[server/README.md](server/README.md)** 참고.
-
----
-
-## 문서
-
-| 문서 | 내용 |
-|---|---|
-| **[server/README.md](server/README.md)** | 백엔드 실행·배포·API·스키마 레퍼런스 |
-| **[server/docs/](server/docs/README.md)** | 기능별 구현·어노테이션·동시성 처리 + 코드 한 줄씩 정독 가이드 |
+- [iOS 앱](RoutineCalendar/): 루틴·캘린더·친구 화면
+- [백엔드](server/): 인증·친구·루틴 요약·알림 처리
+- [위젯](RoutineCalendarWidget/): 홈 화면 위젯
 
 ---
 
